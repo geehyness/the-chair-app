@@ -1,31 +1,25 @@
-'useclient'
-
-import NextLink from 'next/link'; // Use NextLink for internal routing
-import { client } from '@/lib/sanity';
+// src/app/page.tsx
+import { client } from '@/lib/sanity'; // Import your Sanity client
 import { groq } from 'next-sanity';
-// import { logger } from '@/lib/logger';
-import {
-  Box,
-  Flex,
-  Heading,
-  Text,
-  Button,
-  Link,
-  SimpleGrid,
-  Container,
-  useColorModeValue,
-} from '@chakra-ui/react';
-import Image from 'next/image'; // Next.js Image component
-import { urlFor } from '@/lib/sanity'; // Import urlFor for image handling
+import { Inter } from 'next/font/google';
 import HomePageClient from '@/components/HomePageClient';
+import './globals.css';
+import { Providers } from './providers';
 
-// Define TypeScript interfaces for our Sanity data types
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata = {
+  title: 'The Chair App',
+  description: 'Salon booking made easy',
+};
+
+// Define TypeScript interfaces for data fetched by this server component
 interface Barber {
   _id: string;
   name: string;
   slug: { current: string };
-  image?: any; // Sanity image asset type
-  bio?: any; // Portable Text array
+  image?: any;
+  bio?: any;
 }
 
 interface Service {
@@ -36,18 +30,45 @@ interface Service {
   price: number;
 }
 
-async function getHomePageData(): Promise<{ barbers: Barber[]; services: Service[] }> {
+interface SiteSettings {
+  title?: string;
+  description?: string;
+  coverImage?: any;
+}
+
+// Function to fetch all necessary data on the server
+async function getHomePageData(): Promise<{
+  barbers: Barber[];
+  services: Service[];
+  siteSettings: SiteSettings; // Still typed as SiteSettings, but we'll ensure it's an object
+}> {
   const query = groq`
     {
       "barbers": *[_type == "barber"]{ _id, name, slug, image, bio },
-      "services": *[_type == "service"] | order(price asc){ _id, name, description, duration, price }
+      "services": *[_type == "service"] | order(price asc){ _id, name, description, duration, price },
+      "siteSettings": *[_type == "siteSettings"][0]{ title, description, coverImage }
     }
-  `
-  const data = await client.fetch(query)
-  return data
+  `;
+  const data = await client.fetch(query);
+
+  // Ensure siteSettings is an object, even if null from Sanity
+  const siteSettings = data.siteSettings || {};
+
+  return {
+    barbers: data.barbers,
+    services: data.services,
+    siteSettings: siteSettings,
+  };
 }
 
 export default async function Page() {
-  const { barbers, services } = await getHomePageData()
-  return <HomePageClient barbers={barbers} services={services} />
+  const { barbers, services, siteSettings } = await getHomePageData();
+
+  return (
+    <HomePageClient
+      barbers={barbers}
+      services={services}
+      siteSettings={siteSettings}
+    />
+  );
 }

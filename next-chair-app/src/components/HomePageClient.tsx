@@ -12,10 +12,15 @@ import {
   Link,
   SimpleGrid,
   Container,
+  // Removed: useColorModeValue
+  Spinner,
+  Center,
 } from '@chakra-ui/react'
 import Image from 'next/image'
 import { urlFor } from '@/lib/sanity'
+import { PortableText } from '@portabletext/react';
 
+// Define TypeScript interfaces for our Sanity data types
 interface Barber {
   _id: string
   name: string
@@ -32,23 +37,47 @@ interface Service {
   price: number
 }
 
+interface SiteSettings {
+  title?: string;
+  description?: string;
+  coverImage?: any;
+}
+
 interface HomePageClientProps {
   barbers: Barber[]
   services: Service[]
+  siteSettings: SiteSettings;
 }
 
 export default function HomePageClient({
   barbers,
   services,
+  siteSettings,
 }: HomePageClientProps) {
+  // Static color values to avoid useColorModeValue error
+  const bgColor = 'gray.800'; // Dark background
+  const headerBg = 'gray.900'; // Even darker header
+  const headerColor = 'white';
+  const linkHoverColor = 'purple.400';
+  const heroGradientStart = 'purple.700';
+  const heroGradientEnd = 'purple.900';
+  const heroButtonBg = 'gray.100';
+  const heroButtonColor = 'purple.900';
+  const sectionHeadingColor = 'gray.100';
+  const cardBg = 'gray.800';
+  const cardBorderColor = 'gray.600';
+  const cardHeadingColor = 'gray.100';
+  const cardTextColor = 'gray.300';
+  const footerBg = 'gray.900';
+  const footerColor = 'gray.300';
+
   return (
-    <Box minH="100vh" bg="gray.100" _dark={{ bg: 'gray.900' }}>
+    <Box minH="100vh" bg={bgColor}>
       {/* Header */}
       <Flex
         as="header"
-        bg="gray.800"
-        _dark={{ bg: 'gray.900' }}
-        color="white"
+        bg={headerBg}
+        color={headerColor}
         p={6}
         shadow="lg"
         align="center"
@@ -61,13 +90,13 @@ export default function HomePageClient({
           alignItems="center"
         >
           <Heading as="h1" size="lg" color="white">
-            The Chair App
+            {siteSettings.title || 'The Chair App'}
           </Heading>
           <Flex as="nav" gap={4}>
             <Link
               as={NextLink}
               href="/"
-              _hover={{ color: 'brand.400' }}
+              _hover={{ color: linkHoverColor }}
               transition="0.2s"
             >
               Home
@@ -75,21 +104,21 @@ export default function HomePageClient({
             <Link
               as={NextLink}
               href="/book"
-              _hover={{ color: 'brand.400' }}
+              _hover={{ color: linkHoverColor }}
             >
               Book Appointment
             </Link>
             <Link
               as={NextLink}
               href="/barber-dashboard"
-              _hover={{ color: 'brand.400' }}
+              _hover={{ color: linkHoverColor }}
             >
               Barber Dashboard
             </Link>
             <Link
               as={NextLink}
               href="/admin-reports"
-              _hover={{ color: 'brand.400' }}
+              _hover={{ color: linkHoverColor }}
             >
               Admin Reports
             </Link>
@@ -100,16 +129,38 @@ export default function HomePageClient({
       {/* Hero Section */}
       <Flex
         as="section"
-        bgGradient="linear(to-br, brand.500, brand.700)"
+        bgGradient={`linear(to-br, ${heroGradientStart}, ${heroGradientEnd})`}
         color="white"
         py={20}
         textAlign="center"
         align="center"
         justify="center"
+        position="relative"
+        overflow="hidden"
       >
-        <Container maxW="container.lg" px={4}>
+        {siteSettings.coverImage && (
+          <Image
+            src={urlFor(siteSettings.coverImage).url()}
+            alt={siteSettings.title || "Barbershop Cover"}
+            layout="fill"
+            objectFit="cover"
+            quality={90}
+            priority
+            style={{ zIndex: 0 }}
+          />
+        )}
+        <Box
+          position="absolute"
+          top="0"
+          left="0"
+          right="0"
+          bottom="0"
+          bg="blackAlpha.600"
+          zIndex="1"
+        />
+        <Container maxW="container.lg" px={4} zIndex="2">
           <Heading as="h2" size="3xl" mb={4}>
-            Your Perfect Cut, Just a Click Away
+            {siteSettings.description || 'Your Perfect Cut, Just a Click Away'}
           </Heading>
           <Text fontSize="xl" mb={8} opacity={0.9}>
             Experience top-notch grooming with our skilled barbers.
@@ -118,11 +169,12 @@ export default function HomePageClient({
             as={NextLink}
             href="/book"
             size="lg"
-            bg="white"
-            color="brand.700"
-            _hover={{ bg: 'gray.100' }}
+            bg={heroButtonBg}
+            color={heroButtonColor}
+            _hover={{ bg: 'gray.200' }}
             shadow="lg"
             transition="0.2s"
+            rounded="full"
           >
             Book Your Appointment Now!
           </Button>
@@ -136,8 +188,7 @@ export default function HomePageClient({
           size="xl"
           textAlign="center"
           mb={12}
-          color="gray.800"
-          _dark={{ color: 'gray.100' }}
+          color={sectionHeadingColor}
         >
           Our Services
         </Heading>
@@ -146,14 +197,12 @@ export default function HomePageClient({
             services.map((service) => (
               <Box
                 key={service._id}
-                bg="white"
-                _dark={{ bg: 'gray.800' }}
+                bg={cardBg}
                 rounded="lg"
                 shadow="lg"
                 p={6}
                 border="1px"
-                borderColor="gray.200"
-                _dark={{ borderColor: 'gray.600' }}
+                borderColor={cardBorderColor}
                 _hover={{ shadow: 'xl' }}
                 transition="0.2s"
               >
@@ -161,38 +210,44 @@ export default function HomePageClient({
                   as="h4"
                   size="md"
                   mb={2}
-                  color="gray.800"
-                  _dark={{ color: 'gray.100' }}
+                  color={cardHeadingColor}
                 >
                   {service.name}
                 </Heading>
                 <Text
-                  color="gray.600"
-                  _dark={{ color: 'gray.300' }}
+                  color={cardTextColor}
                   mb={3}
                 >
                   {service.description || 'No description provided.'}
                 </Text>
-                <Flex justify="space-between">
+                <Flex justify="space-between" align="center">
                   <Text
                     fontWeight="medium"
-                    color="gray.800"
-                    _dark={{ color: 'gray.100' }}
+                    color={cardHeadingColor}
                   >
                     {service.duration} mins
                   </Text>
                   <Text
                     fontWeight="medium"
-                    color="gray.800"
-                    _dark={{ color: 'gray.100' }}
+                    color={cardHeadingColor}
                   >
                     R{service.price.toFixed(2)}
                   </Text>
                 </Flex>
+                <Button
+                  as={NextLink}
+                  href="/book"
+                  mt={4}
+                  colorScheme="purple"
+                  rounded="full"
+                  _hover={{ bg: 'purple.700' }}
+                >
+                  Book This Service
+                </Button>
               </Box>
             ))
           ) : (
-            <Text textAlign="center" color="gray.600" _dark={{ color: 'gray.300' }}>
+            <Text textAlign="center" color={cardTextColor}>
               No services available at the moment. Please check back later!
             </Text>
           )}
@@ -200,15 +255,14 @@ export default function HomePageClient({
       </Container>
 
       {/* Our Barbers Section */}
-      <Box as="section" bg="gray.50" _dark={{ bg: 'gray.700' }} py={16} px={4}>
+      <Box as="section" bg={'gray.700'} py={16} px={4}> {/* Static gray.700 for this section */}
         <Container maxW="container.xl">
           <Heading
             as="h3"
             size="xl"
             textAlign="center"
             mb={12}
-            color="gray.800"
-            _dark={{ color: 'gray.100' }}
+            color={sectionHeadingColor}
           >
             Meet Our Barbers
           </Heading>
@@ -217,14 +271,12 @@ export default function HomePageClient({
               barbers.map((barber) => (
                 <Box
                   key={barber._id}
-                  bg="white"
-                  _dark={{ bg: 'gray.800' }}
+                  bg={cardBg}
                   rounded="lg"
                   shadow="lg"
                   overflow="hidden"
                   border="1px"
-                  borderColor="gray.200"
-                  _dark={{ borderColor: 'gray.600' }}
+                  borderColor={cardBorderColor}
                   _hover={{ shadow: 'xl' }}
                   transition="0.2s"
                 >
@@ -243,33 +295,26 @@ export default function HomePageClient({
                       as="h4"
                       size="md"
                       mb={2}
-                      color="gray.800"
-                      _dark={{ color: 'gray.100' }}
+                      color={cardHeadingColor}
                     >
                       {barber.name}
                     </Heading>
                     {barber.bio && (
                       <Text
-                        color="gray.600"
-                        _dark={{ color: 'gray.300' }}
+                        color={cardTextColor}
                         fontSize="sm"
                         mb={4}
                         noOfLines={3}
                       >
-                        {barber.bio
-                          .map((block: any) =>
-                            block.children?.map((span: any) => span.text).join('')
-                          )
-                          .join(' ')}
+                        <PortableText value={barber.bio} />
                       </Text>
                     )}
                     <Link
                       as={NextLink}
                       href={`/barbers/${barber.slug.current}`}
-                      color="brand.600"
-                      _dark={{ color: 'brand.300' }}
+                      color="purple.300" // Static purple.300
                       fontWeight="medium"
-                      _hover={{ color: 'brand.700' }}
+                      _hover={{ color: 'purple.400' }}
                       transition="0.2s"
                     >
                       View Profile & Book
@@ -278,7 +323,7 @@ export default function HomePageClient({
                 </Box>
               ))
             ) : (
-              <Text textAlign="center" color="gray.600" _dark={{ color: 'gray.300' }}>
+              <Text textAlign="center" color={cardTextColor}>
                 No barbers available at the moment. Check back soon!
               </Text>
             )}
@@ -287,9 +332,9 @@ export default function HomePageClient({
       </Box>
 
       {/* Footer */}
-      <Box as="footer" bg="gray.900" color="gray.300" p={6} textAlign="center">
+      <Box as="footer" bg={footerBg} color={footerColor} p={6} textAlign="center">
         <Container maxW="container.xl">
-          <Text>&copy; {new Date().getFullYear()} The Chair App. All rights reserved.</Text>
+          <Text>&copy; {new Date().getFullYear()} {siteSettings.title || 'The Chair App'}. All rights reserved.</Text>
         </Container>
       </Box>
     </Box>

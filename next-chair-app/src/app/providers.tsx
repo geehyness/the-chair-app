@@ -1,9 +1,14 @@
-// src/components/Providers.tsx
 'use client'
 
 import { ChakraProvider } from '@chakra-ui/react'
-import { ThemeProvider } from 'next-themes'
-import { system } from '../app/theme/system'
+import dynamic from 'next/dynamic'
+import themes from './theme/theme'
+
+// Dynamically import ThemeProvider with ssr: false
+const ThemeProvider = dynamic(
+  () => import('next-themes').then((mod) => mod.ThemeProvider),
+  { ssr: false }
+)
 
 interface ProvidersProps {
   children?: React.ReactNode
@@ -11,12 +16,12 @@ interface ProvidersProps {
 
 export function Providers({ children }: ProvidersProps) {
   return (
-    <ChakraProvider value={system}>
+    <ChakraProvider value={themes}>
       <ThemeProvider
-        attribute="class"             // use class strategy
-        defaultTheme="dark"           // start in dark mode
-        enableSystem={false}          // ignore system preference
-        disableTransitionOnChange     // prevent flashes on mount
+        attribute="class"
+        defaultTheme="dark"
+        enableSystem={false}
+        disableTransitionOnChange
       >
         {children}
       </ThemeProvider>
