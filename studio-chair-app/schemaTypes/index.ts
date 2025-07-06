@@ -1,0 +1,21 @@
+import service from './service'
+import customer from './customer'
+import barber from './barber'
+import appointment from './appointment'
+import category from './category'
+import galleryImage from './galleryImage'
+import testimonial from './testimonial'
+import siteSettings from './siteSettings'
+import blogPost from './blogPost'
+
+export const schemaTypes = [
+  service,
+  customer,
+  barber,
+  appointment,
+  category,
+  galleryImage,
+  testimonial,
+  siteSettings,
+  blogPost,
+]
