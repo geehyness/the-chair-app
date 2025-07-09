@@ -35,39 +35,6 @@ export default function BookPageClient({ barbers, services }: BookPageClientProp
 
   return (
     <Box minH="100vh" bg={useColorModeValue(theme.colors.neutral.light['bg-primary'], theme.colors.neutral.dark['bg-primary'])} fontFamily="body">
-      {/* Header - This header is redundant if you have a global Navbar. */}
-      {/* If you have a global Navbar in layout.tsx, you can remove this local header. */}
-      {/* For now, keeping it as it was in your original file. */}
-      <Flex
-        as="header"
-        bg={headerBg}
-        color={headerColor}
-        p={6}
-        shadow="lg"
-        align="center"
-        justify="space-between"
-      >
-        <Container maxW="container.xl" display="flex" justifyContent="space-between" alignItems="center">
-          <Heading as="h1" size="lg" fontWeight="extrabold" p={2} rounded="md">
-            The Chair App
-          </Heading>
-          <Flex as="nav">
-            <Link as={NextLink} href="/" p={2} rounded="md" _hover={{ color: 'brand.400' }} transition="0.3s ease-in-out">
-              Home
-            </Link>
-            <Link as={NextLink} href="/book" p={2} rounded="md" _hover={{ color: 'brand.400' }} transition="0.3s ease-in-out" ml={4}>
-              Book Appointment
-            </Link>
-            <Link as={NextLink} href="/barber-dashboard" p={2} rounded="md" _hover={{ color: 'brand.400' }} transition="0.3s ease-in-out" ml={4}>
-              Barber Dashboard
-            </Link>
-            <Link as={NextLink} href="/admin-reports" p={2} rounded="md" _hover={{ color: 'brand.400' }} transition="0.3s ease-in-out" ml={4}>
-              Admin Reports
-            </Link>
-          </Flex>
-        </Container>
-      </Flex>
-
       <Container as="main" maxW="2xl" p={8} my={12} bg={mainBg} rounded="lg" shadow="xl">
         <Heading as="h2" size="xl" textAlign="center" color={headingColor} mb={10}>
           Book Your Appointment
@@ -75,13 +42,7 @@ export default function BookPageClient({ barbers, services }: BookPageClientProp
         <BookingForm barbers={barbers} services={services} />
       </Container>
 
-      {/* Footer */}
-      <Box as="footer" bg={footerBg} color={footerText} p={6} textAlign="center" roundedTop="md" mt={12}>
-        <Container maxW="container.xl">
-          <Text>&copy; {new Date().getFullYear()} The Chair App by Synapse Digital. All rights reserved.</Text>
-          <Text mt={2}>Designed with ❤️ for a great cut.</Text>
-        </Container>
-      </Box>
+      
     </Box>
   );
 }

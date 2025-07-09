@@ -11,19 +11,20 @@ import { Metadata } from 'next';
 import type { Barber, Appointment, Service, Customer } from '@/app/barber-dashboard/manage/page';
 
 export const metadata: Metadata = {
-  title: 'Today\'s Appointments - Barber Dashboard',
-  description: 'Overview of all appointments for today across all barbers.',
+  title: 'Today\'s & Upcoming Appointments - Barber Dashboard', // Updated title
+  description: 'Overview of all appointments for today and upcoming days across all barbers.',
 };
 
 // Function to fetch all barbers and today's appointments
 async function getDailyAppointmentsData(): Promise<{
   barbers: Barber[];
   todayAppointments: Appointment[];
+  upcomingAppointments: Appointment[]; // NEW: Add upcoming appointments
 }> {
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Start of today
   const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1); // Start of tomorrow
+  tomorrow.setDate(tomorrow.getDate() + 1); // Start of tomorrow (used to filter "today")
 
   const query = groq`
     {
@@ -39,7 +40,7 @@ async function getDailyAppointmentsData(): Promise<{
           endTime
         }
       } | order(name asc),
-      "appointments": *[_type == "appointment" && dateTime >= $startOfDay && dateTime < $endOfDay]{
+      "todayAppointments": *[_type == "appointment" && dateTime >= $startOfDay && dateTime < $endOfDay]{
         _id,
         customer->{_id, name, email},
         barber->{_id, name},
@@ -47,7 +48,16 @@ async function getDailyAppointmentsData(): Promise<{
         dateTime,
         status,
         notes
-      } | order(dateTime asc)
+      } | order(dateTime asc),
+      "upcomingAppointments": *[_type == "appointment" && dateTime >= $endOfDay]{ // NEW: Appointments from tomorrow onwards
+        _id,
+        customer->{_id, name, email},
+        barber->{_id, name},
+        service->{_id, name, duration, price},
+        dateTime,
+        status,
+        notes
+      } | order(dateTime asc) // Order upcoming appointments by date/time
     }
   `;
 
@@ -64,17 +74,19 @@ async function getDailyAppointmentsData(): Promise<{
 
   return {
     barbers: processedBarbers || [],
-    todayAppointments: data.appointments || [],
+    todayAppointments: data.todayAppointments || [],
+    upcomingAppointments: data.upcomingAppointments || [], // Return upcoming appointments
   };
 }
 
 export default async function BarberDashboardAppointmentsPage() {
-  const { barbers, todayAppointments } = await getDailyAppointmentsData();
+  const { barbers, todayAppointments, upcomingAppointments } = await getDailyAppointmentsData(); // Destructure upcomingAppointments
 
   return (
     <BarberDailyAppointmentsClient
       barbers={barbers}
       todayAppointments={todayAppointments}
+      upcomingAppointments={upcomingAppointments} // Pass upcomingAppointments to client component
     />
   );
 }

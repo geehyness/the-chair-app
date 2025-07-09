@@ -21,7 +21,7 @@ import {
   Checkbox, // Import Checkbox for account creation option
   useTheme, // Import useTheme hook
 } from '@chakra-ui/react';
-import { format, parseISO, addMinutes, isBefore, isAfter, isEqual, startOfDay, endOfDay, setHours, setMinutes } from 'date-fns';
+import { format, parseISO, addMinutes, isBefore, isAfter, isEqual, startOfDay, endOfDay, setHours, setMinutes, isToday } from 'date-fns'; // <--- ADDED isToday HERE
 
 // Define TypeScript interfaces for props (ensure these match what's passed from page.tsx)
 interface DailyAvailability {
@@ -109,7 +109,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
         // Fetch existing appointments for the selected barber and date
         const response = await fetch(`/api/appointments?barberId=${selectedBarber._id}&date=${selectedDate}`);
         if (!response.ok) {
-          throw new Error('Failed to fetch existing appointments.');
+          throw new Error('Failed to fetch existing appointments for time slot calculation.');
         }
         const existingAppointments: any[] = await response.json();
 
@@ -126,9 +126,9 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
           // Adjust for current time if selectedDate is today
           const now = new Date();
           if (isToday(parseISO(selectedDate)) && isBefore(currentTime, now)) {
-            // Round up to the next 15-minute interval from now
+            // Round up to the next 30-minute interval from now
             const minutes = now.getMinutes();
-            const roundedMinutes = Math.ceil(minutes / 15) * 15;
+            const roundedMinutes = Math.ceil(minutes / 30) * 30; // Changed to 30-minute intervals
             currentTime = setMinutes(setHours(now, now.getHours()), roundedMinutes);
             // If rounding up pushes to next hour, adjust hour
             if (roundedMinutes === 60) {
@@ -168,7 +168,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
             if (!isConflict) {
               slots.push(currentTime);
             }
-            currentTime = addMinutes(currentTime, 15); // Move to the next 15-minute interval
+            currentTime = addMinutes(currentTime, 30); // Move to the next 30-minute interval
           }
         });
 
@@ -214,6 +214,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
     const fullDateTime = `${selectedDate}T${selectedTime}:00.000Z`; // ISO string format
 
     try {
+      // Corrected API endpoint for booking appointments
       const response = await fetch('/api/book-appointment', {
         method: 'POST',
         headers: {
@@ -421,7 +422,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
           isChecked={createAccountChecked}
           onChange={(e) => setCreateAccountChecked(e.target.checked)}
           colorScheme="brand"
-          color={textColorPrimary} // Now correctly defined
+          color={textColorPrimary}
         >
           Create an account for next time?
         </Checkbox>
