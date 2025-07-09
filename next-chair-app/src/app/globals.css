@@ -37,3 +37,82 @@
   width: 100%;
   height: 100%;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+/* src/app/globals.css */
+
+/* ... (Keep your existing CSS, like fadeIn, fadeInUp, etc.) ... */
+
+/* --- Page Transition Overlays --- */
+
+/* Keyframes for rows to cover the screen (coming from left to cover) */
+@keyframes cover-screen {
+  from { transform: translateX(-100%); } /* Start off-screen left */
+  to { transform: translateX(0); }    /* End covering the screen */
+}
+
+/* Keyframes for rows to reveal the screen (going from covered to off-screen right) */
+@keyframes reveal-screen {
+  from { transform: translateX(0); }    /* Start covering the screen */
+  to { transform: translateX(100%); } /* End off-screen right */
+}
+
+/* Base style for each individual wipe row */
+.wipe-row {
+  position: fixed; /* Use fixed for full viewport coverage */
+  left: 0;
+  width: 100%;
+  height: 25vh; /* For 4 rows, each takes 25% of viewport height */
+  background-color: white; /* As requested: white overlay */
+  z-index: 9999; /* High z-index to be on top of everything */
+  transform: translateX(-100%); /* Initially off-screen left (hidden) */
+  pointer-events: none; /* Allows clicks to pass through when idle/hidden */
+}
+
+/* Specific vertical positioning for each row */
+.wipe-row:nth-child(1) { top: 0vh; }
+.wipe-row:nth-child(2) { top: 25vh; }
+.wipe-row:nth-child(3) { top: 50vh; }
+.wipe-row:nth-child(4) { top: 75vh; }
+
+/* Animation classes for the rows */
+.wipe-in {
+  animation: cover-screen 0.5s ease-out forwards; /* Each row covers in 0.5s */
+}
+
+.wipe-out {
+  animation: reveal-screen 0.5s ease-in forwards; /* Each row reveals in 0.5s */
+}
+
+/* Delay animations for each row to create the "one by one" effect */
+.wipe-delay-1 { animation-delay: 0s; }
+.wipe-delay-2 { animation-delay: 0.1s; }
+.wipe-delay-3 { animation-delay: 0.2s; }
+.wipe-delay-4 { animation-delay: 0.3s; }
+
+/* Loading spinner container */
+.loading-spinner-container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10000; /* Higher than wipe rows */
+  opacity: 0; /* Initially hidden */
+  transition: opacity 0.3s ease-in-out; /* Smooth fade for spinner */
+  pointer-events: none; /* Allows clicks to pass through when hidden */
+}
+
+/* Class to show the spinner */
+.loading-spinner-container.show {
+  opacity: 1;
+}

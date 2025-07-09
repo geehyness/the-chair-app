@@ -37,7 +37,7 @@ export async function logSanityInteraction(
     // Use a Sanity client with a token for write operations
     // Ensure SANITY_API_TOKEN is set in your .env.local and deployment environment
     const clientWithToken = client.withConfig({
-      token: process.env.SANITY_API_TOKEN,
+      token: process.env.NEXT_PUBLIC_SANITY_API_WRITE_TOKEN,
       useCdn: false, // Always ensure fresh data and write capabilities
     });
 
@@ -54,7 +54,8 @@ export async function logSanityInteraction(
     };
 
     await clientWithToken.create(logDocument);
-    appLogger.debug(`SanityLogger: Logged interaction: ${operationType} - ${message}`);
+    // FIX: Changed appLogger.debug to appLogger.info
+    appLogger.info(`SanityLogger: Logged interaction: ${operationType} - ${message}`);
   } catch (error: any) {
     // Use the application logger (Winston) to log errors in the logging process itself
     appLogger.error('SanityLogger: Failed to log interaction to Sanity:', {

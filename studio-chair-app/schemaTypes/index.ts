@@ -1,3 +1,4 @@
+// studio/schemas/index.ts
 import service from './service'
 import customer from './customer'
 import barber from './barber'
@@ -7,6 +8,7 @@ import galleryImage from './galleryImage'
 import testimonial from './testimonial'
 import siteSettings from './siteSettings'
 import blogPost from './blogPost'
+import logEntry from './logEntry' // Import logEntry
 
 export const schemaTypes = [
   service,
@@ -18,4 +20,5 @@ export const schemaTypes = [
   testimonial,
   siteSettings,
   blogPost,
+  logEntry, // Add logEntry to the schemaTypes array
 ]

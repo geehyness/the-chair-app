@@ -26,11 +26,35 @@ export default defineType({
       type: 'string',
       description: 'Customer\'s phone number.',
     }),
+    defineField({
+      name: 'loyaltyPoints',
+      title: 'Loyalty Points',
+      type: 'number',
+      initialValue: 0,
+      validation: (rule) => rule.min(0),
+      description: 'Accumulated loyalty points for the customer.',
+    }),
+    defineField({
+      name: 'notes',
+      title: 'Internal Notes',
+      type: 'text',
+      rows: 3,
+      description: 'Any internal notes about the customer (e.g., preferences, history).',
+    }),
   ],
   preview: {
     select: {
       title: 'name',
       subtitle: 'email',
+      phone: 'phone',
+      loyaltyPoints: 'loyaltyPoints',
+    },
+    prepare(selection) {
+      const {title, subtitle, phone, loyaltyPoints} = selection;
+      return {
+        title: title,
+        subtitle: `${subtitle} ${phone ? `(${phone})` : ''} - Points: ${loyaltyPoints || 0}`,
+      };
     },
   },
 })

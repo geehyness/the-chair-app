@@ -36,7 +36,7 @@ export async function POST(req: Request) {
 
     // Use a Sanity client with a token for write operations
     const clientWithToken = client.withConfig({
-      token: process.env.SANITY_API_TOKEN,
+      token: process.env.NEXT_PUBLIC_SANITY_API_WRITE_TOKEN,
       useCdn: false,
     });
 

@@ -1,5 +1,5 @@
 // src/app/page.tsx
-import { client } from '@/lib/sanity'; // Import your Sanity client
+import { client, urlFor } from '@/lib/sanity'; // Import your Sanity client
 import { groq } from 'next-sanity';
 import { Inter } from 'next/font/google';
 import HomePageClient from '@/components/HomePageClient';
@@ -14,38 +14,65 @@ export const metadata = {
 };
 
 // Define TypeScript interfaces for data fetched by this server component
-interface Barber {
+export interface Barber { // Exported for potential reuse
   _id: string;
   name: string;
   slug: { current: string };
   image?: any;
   bio?: any;
+  dailyAvailability?: Array<{
+    _key: string;
+    dayOfWeek: string;
+    startTime: string;
+    endTime: string;
+  }>;
 }
 
-interface Service {
+export interface Service { // Exported for potential reuse
   _id: string;
   name: string;
   description?: string;
   duration: number;
   price: number;
+  slug: { current: string };
+  image?: any; // ADDED: Sanity Image object
+  imageUrl?: string; // ADDED: Derived URL for direct use
+  category?: { _id: string; title: string }; // ADDED: Expanded category details
 }
 
-interface SiteSettings {
+export interface SiteSettings { // Exported for potential reuse
   title?: string;
   description?: string;
   coverImage?: any;
+  coverImageUrl?: string; // ADDED: Derived URL for direct use
 }
 
 // Function to fetch all necessary data on the server
 async function getHomePageData(): Promise<{
   barbers: Barber[];
   services: Service[];
-  siteSettings: SiteSettings; // Still typed as SiteSettings, but we'll ensure it's an object
+  siteSettings: SiteSettings;
 }> {
   const query = groq`
     {
-      "barbers": *[_type == "barber"]{ _id, name, slug, image, bio },
-      "services": *[_type == "service"] | order(price asc){ _id, name, description, duration, price },
+      "barbers": *[_type == "barber"]{
+        _id,
+        name,
+        slug,
+        image,
+        bio,
+        dailyAvailability[]{\n          _key,\n          dayOfWeek,\n          startTime,\n          endTime\n        }
+      },
+      "services": *[_type == "service"] | order(price asc){
+        _id,
+        name,
+        description,
+        duration,
+        price,
+        slug,
+        image, // ADDED: Fetch image for services
+        category->{_id, title} // ADDED: Fetch category reference
+      },
       "siteSettings": *[_type == "siteSettings"][0]{ title, description, coverImage }
     }
   `;
@@ -54,10 +81,26 @@ async function getHomePageData(): Promise<{
   // Ensure siteSettings is an object, even if null from Sanity
   const siteSettings = data.siteSettings || {};
 
+  // Process barbers to include imageUrl
+  const processedBarbers = data.barbers.map((barber: Barber) => ({
+    ...barber,
+    imageUrl: barber.image ? urlFor(barber.image).url() : undefined,
+  }));
+
+  // Process services to include imageUrl
+  const processedServices = data.services.map((service: Service) => ({
+    ...service,
+    imageUrl: service.image ? urlFor(service.image).url() : undefined,
+  }));
+
+
   return {
-    barbers: data.barbers,
-    services: data.services,
-    siteSettings: siteSettings,
+    barbers: processedBarbers,
+    services: processedServices,
+    siteSettings: {
+      ...siteSettings,
+      coverImageUrl: siteSettings.coverImage ? urlFor(siteSettings.coverImage).url() : undefined,
+    },
   };
 }
 
