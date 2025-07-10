@@ -28,6 +28,7 @@ import {
   Tag,
   TagLabel,
   TagCloseButton,
+  Text,
 } from '@chakra-ui/react';
 import { client, urlFor } from '@/lib/sanity'; // Ensure client and urlFor are imported
 import { groq } from 'next-sanity';
@@ -62,7 +63,6 @@ export function EditSiteSettingsModal({ isOpen, onClose, onSettingsSaved }: Edit
   const toast = useToast();
   const theme = useTheme();
 
-  const [settingsId, setSettingsId] = useState<string | undefined>(undefined);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState('');
@@ -72,108 +72,90 @@ export function EditSiteSettingsModal({ isOpen, onClose, onSettingsSaved }: Edit
   const [newSocialPlatform, setNewSocialPlatform] = useState('');
   const [newSocialUrl, setNewSocialUrl] = useState('');
 
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [previewLogoUrl, setPreviewLogoUrl] = useState<string | undefined>(undefined);
-  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
-  const [previewCoverImageUrl, setPreviewCoverImageUrl] = useState<string | undefined>(undefined);
+  // State for image handling
+  const [logoFile, setLogoFile] = useState<File | null>(null); // State for the selected logo file
+  const [previewLogoUrl, setPreviewLogoUrl] = useState<string | undefined>(undefined); // URL for logo preview
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null); // State for the selected cover image file
+  const [previewCoverImageUrl, setPreviewCoverImageUrl] = useState<string | undefined>(undefined); // URL for cover image preview
 
   const [isLoading, setIsLoading] = useState(false);
-  const [dataLoading, setDataLoading] = useState(true); // State for loading existing settings
+  const [showImageSpinners, setShowImageSpinners] = useState(false);
 
-  // Chakra UI color mode values
-  const modalBg = useColorModeValue('white', 'gray.700');
-  const textColor = useColorModeValue('gray.800', 'white');
-  const labelColor = useColorModeValue('gray.600', 'gray.300');
-  const inputBg = useColorModeValue('gray.50', 'gray.600');
-  const borderColor = useColorModeValue('gray.200', 'gray.600');
-  const tagBg = useColorModeValue('purple.100', 'purple.700');
-  const tagColor = useColorModeValue('purple.800', 'purple.100');
+  const cardBg = useColorModeValue(theme.colors.neutral.light['bg-card'], theme.colors.neutral.dark['bg-card']);
+  const textColorPrimary = useColorModeValue(theme.colors.neutral.light['text-primary'], theme.colors.neutral.dark['text-primary']);
+  const textColorSecondary = useColorModeValue(theme.colors.neutral.light['text-secondary'], theme.colors.neutral.dark['text-secondary']);
+  const labelColor = useColorModeValue(theme.colors.neutral.light['text-primary'], theme.colors.neutral.dark['text-primary']);
+  const inputBg = useColorModeValue(theme.colors.neutral.light['bg-input'], theme.colors.neutral.dark['bg-input']);
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const placeholderColor = useColorModeValue('gray.500', 'gray.400');
+  const tagBg = useColorModeValue(theme.colors.brand['100'], theme.colors.brand['700']);
+  const tagColor = useColorModeValue(theme.colors.brand['800'], 'whiteAlpha.900');
 
 
   useEffect(() => {
     if (isOpen) {
-      setDataLoading(true);
-      const fetchSettings = async () => {
-        try {
-          const fetchedSettings: SiteSettings = await client.fetch(groq`*[_type == "siteSettings"][0]{
-            _id,
-            title,
-            description,
-            logo, // Fetch Sanity image object
-            coverImage, // Fetch Sanity image object
-            phone,
-            email,
-            location,
-            socialLinks[]{
-              platform,
-              url
-            }
-          }`);
-
-          if (fetchedSettings) {
-            setSettingsId(fetchedSettings._id);
-            setTitle(fetchedSettings.title || '');
-            setDescription(fetchedSettings.description || '');
-            setPhone(fetchedSettings.phone || '');
-            setEmail(fetchedSettings.email || '');
-            setLocation(fetchedSettings.location || '');
-            setSocialLinks(fetchedSettings.socialLinks || []);
-            setPreviewLogoUrl(fetchedSettings.logo ? urlFor(fetchedSettings.logo).url() : undefined);
-            setPreviewCoverImageUrl(fetchedSettings.coverImage ? urlFor(fetchedSettings.coverImage).url() : undefined);
-          } else {
-            // Reset to default if no settings found
-            setSettingsId(undefined);
-            setTitle('');
-            setDescription('');
-            setPhone('');
-            setEmail('');
-            setLocation('');
-            setSocialLinks([]);
-            setPreviewLogoUrl(undefined);
-            setPreviewCoverImageUrl(undefined);
-          }
-          setImageFile(null); // Clear image files on open
-          setCoverImageFile(null);
-          setNewSocialPlatform('');
-          setNewSocialUrl('');
-        } catch (error) {
-          console.error('Failed to fetch site settings:', error);
-          toast({
-            title: 'Error loading site settings.',
-            description: 'Could not load existing site settings. Please try again.',
-            status: 'error',
-            duration: 5000,
-            isClosable: true,
-          });
-        } finally {
-          setDataLoading(false);
+      // Fetch current settings when modal opens
+      setIsLoading(true);
+      client.fetch(groq`*[_type == "siteSettings"][0]{
+        title,
+        description,
+        phone,
+        email,
+        location,
+        "logoUrl": logo.asset->url, // Fetch direct URL
+        "coverImageUrl": coverImage.asset->url, // Fetch direct URL
+        socialLinks
+      }`).then((data: SiteSettings) => {
+        if (data) {
+          setTitle(data.title || '');
+          setDescription(data.description || '');
+          setPhone(data.phone || '');
+          setEmail(data.email || '');
+          setLocation(data.location || '');
+          setSocialLinks(data.socialLinks || []);
+          setPreviewLogoUrl(data.logoUrl); // Set preview URL
+          setPreviewCoverImageUrl(data.coverImageUrl); // Set preview URL
         }
-      };
-      fetchSettings();
+      }).catch((error) => {
+        console.error('Failed to fetch site settings:', error);
+        toast({
+          title: 'Error fetching settings',
+          description: 'Could not load site settings.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }).finally(() => {
+        setIsLoading(false);
+      });
+
+      // Clear file inputs and new social link fields on open
+      setLogoFile(null); // Corrected from setImageFile
+      setCoverImageFile(null);
+      setNewSocialPlatform('');
+      setNewSocialUrl('');
     }
   }, [isOpen, toast]);
 
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
+  const handleLogoFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0];
       setLogoFile(file);
-      setPreviewLogoUrl(URL.createObjectURL(file));
+      setPreviewLogoUrl(URL.createObjectURL(file)); // Create a URL for immediate preview
     } else {
       setLogoFile(null);
-      // If no file selected, revert preview to initial image if available
-      setPreviewLogoUrl(settingsId ? (urlFor(client.fetch(groq`*[_id == "${settingsId}"][0]{logo}.logo`)).url()) : undefined);
+      setPreviewLogoUrl(undefined);
     }
   };
 
-  const handleCoverImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
+  const handleCoverImageFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0];
       setCoverImageFile(file);
-      setPreviewCoverImageUrl(URL.createObjectURL(file));
+      setPreviewCoverImageUrl(URL.createObjectURL(file)); // Create a URL for immediate preview
     } else {
       setCoverImageFile(null);
-      // Revert preview to initial if no new file
-      setPreviewCoverImageUrl(settingsId ? (urlFor(client.fetch(groq`*[_id == "${settingsId}"][0]{coverImage}.coverImage`)).url()) : undefined);
+      setPreviewCoverImageUrl(undefined);
     }
   };
 
@@ -184,8 +166,8 @@ export function EditSiteSettingsModal({ isOpen, onClose, onSettingsSaved }: Edit
       setNewSocialUrl('');
     } else {
       toast({
-        title: 'Missing social link details.',
-        description: 'Please provide both platform and URL for the social link.',
+        title: 'Missing fields',
+        description: 'Please enter both platform and URL for the social link.',
         status: 'warning',
         duration: 3000,
         isClosable: true,
@@ -199,206 +181,260 @@ export function EditSiteSettingsModal({ isOpen, onClose, onSettingsSaved }: Edit
 
   const handleSubmit = async () => {
     setIsLoading(true);
+    setShowImageSpinners(true); // Show spinners when starting upload/save
 
     try {
-      const formData = new FormData();
-      if (title !== undefined) formData.append('title', title);
-      if (description !== undefined) formData.append('description', description);
-      if (phone !== undefined) formData.append('phone', phone);
-      if (email !== undefined) formData.append('email', email);
-      if (location !== undefined) formData.append('location', location);
-      formData.append('socialLinks', JSON.stringify(socialLinks)); // Stringify array
+      let logoAssetRef = undefined;
+      let coverImageAssetRef = undefined;
 
+      // Upload new logo if a file is selected
       if (logoFile) {
-        formData.append('logo', logoFile);
-      } else if (previewLogoUrl === undefined && settingsId) { // If it was an existing setting and logo was removed
-        formData.append('logo', 'null');
+        const logoAsset = await client.assets.upload('image', logoFile);
+        logoAssetRef = {
+          _type: 'image',
+          asset: {
+            _ref: logoAsset._id,
+            _type: 'reference',
+          },
+        };
       }
 
+      // Upload new cover image if a file is selected
       if (coverImageFile) {
-        formData.append('coverImage', coverImageFile);
-      } else if (previewCoverImageUrl === undefined && settingsId) { // If it was an existing setting and cover image was removed
-        formData.append('coverImage', 'null');
+        const coverImageAsset = await client.assets.upload('image', coverImageFile);
+        coverImageAssetRef = {
+          _type: 'image',
+          asset: {
+            _ref: coverImageAsset._id,
+            _type: 'reference',
+          },
+        };
       }
 
-      const endpoint = settingsId ? `/api/siteSettings?id=${settingsId}` : '/api/siteSettings';
-      const method = settingsId ? 'PUT' : 'POST'; // Use POST for upsert if no ID, PUT for update if ID exists
+      // Construct the patch document
+      const patchDoc: SiteSettings = {
+        title,
+        description,
+        phone,
+        email,
+        location,
+        socialLinks,
+      };
 
-      const response = await fetch(endpoint, {
-        method,
-        body: formData,
-      });
+      // Conditionally add image assets to the patch document
+      if (logoAssetRef !== undefined) {
+        patchDoc.logo = logoAssetRef;
+      }
+      if (coverImageAssetRef !== undefined) {
+        patchDoc.coverImage = coverImageAssetRef;
+      }
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save site settings.');
+      // If no logo file was selected but there was a preview URL (meaning existing image),
+      // and the user cleared it, explicitly set logo to null to remove it from Sanity.
+      if (!logoFile && previewLogoUrl === undefined) {
+        (patchDoc as any).logo = null;
+      }
+      // Same for cover image
+      if (!coverImageFile && previewCoverImageUrl === undefined) {
+        (patchDoc as any).coverImage = null;
+      }
+
+
+      // Check if siteSettings document exists
+      const existingSettings = await client.fetch(groq`*[_type == "siteSettings"][0]{_id}`);
+      let siteSettingsId = existingSettings ? existingSettings._id : null;
+
+      if (siteSettingsId) {
+        // Update existing document
+        await client.patch(siteSettingsId).set(patchDoc).commit();
+      } else {
+        // Create new document if it doesn't exist
+        const newSettings = { _type: 'siteSettings', ...patchDoc };
+        const createdDoc = await client.create(newSettings);
+        siteSettingsId = createdDoc._id; // Get the ID of the newly created document
       }
 
       toast({
-        title: 'Site settings saved.',
-        description: 'Your site settings have been successfully updated.',
+        title: 'Settings saved.',
+        description: 'Site settings have been updated successfully.',
         status: 'success',
         duration: 5000,
         isClosable: true,
       });
-
-      onSettingsSaved(); // Trigger data re-fetch in parent component
-      onClose(); // Close the modal
+      onSettingsSaved(); // Callback to refresh data in parent
+      onClose(); // Close modal on success
     } catch (error: any) {
-      console.error('Error saving site settings:', error);
+      console.error('Failed to save site settings:', error);
       toast({
-        title: 'Error saving site settings.',
-        description: error.message || 'There was an error saving the site settings. Please try again.',
+        title: 'Error saving settings.',
+        description: `Failed to update site settings: ${error.message || 'Unknown error'}`,
         status: 'error',
         duration: 9000,
         isClosable: true,
       });
     } finally {
       setIsLoading(false);
+      setShowImageSpinners(false); // Hide spinners after upload/save attempt
     }
   };
 
+  const handleClearLogo = () => {
+    setLogoFile(null);
+    setPreviewLogoUrl(undefined);
+  };
+
+  const handleClearCoverImage = () => {
+    setCoverImageFile(null);
+    setPreviewCoverImageUrl(undefined);
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="3xl">
+    <Modal isOpen={isOpen} onClose={onClose} size="xl" isCentered>
       <ModalOverlay />
-      <ModalContent bg={modalBg} color={textColor} borderRadius="lg" overflow="hidden">
-        <ModalHeader borderBottom="1px solid" borderColor={borderColor} pb={3}>
+      <ModalContent bg={cardBg} borderRadius="lg" overflow="hidden">
+        <ModalHeader borderBottomWidth="1px" borderColor={borderColor} color={textColorPrimary}>
           Edit Site Settings
         </ModalHeader>
-        <ModalCloseButton />
+        <ModalCloseButton color={textColorPrimary} />
         <ModalBody p={6}>
-          {dataLoading ? (
-            <Flex justify="center" align="center" height="200px">
+          {isLoading && !showImageSpinners ? ( // Show a general spinner if initial data is loading
+            <Flex justify="center" align="center" minH="200px">
               <Spinner size="xl" color="brand.500" />
             </Flex>
           ) : (
-            <VStack spacing={4} align="stretch">
+            <VStack spacing={5} align="stretch">
               <FormControl id="title">
                 <FormLabel color={labelColor}>Site Title</FormLabel>
                 <Input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g., The Chair App"
+                  placeholder="The Chair App"
                   bg={inputBg}
                   borderColor={borderColor}
+                  _placeholder={{ color: placeholderColor }}
                 />
               </FormControl>
 
               <FormControl id="description">
-                <FormLabel color={labelColor}>Tagline / Description</FormLabel>
+                <FormLabel color={labelColor}>Site Description</FormLabel>
                 <Textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="A short description for your website..."
-                  rows={3}
+                  placeholder="Your app's mission statement or tagline"
                   bg={inputBg}
                   borderColor={borderColor}
+                  _placeholder={{ color: placeholderColor }}
                 />
               </FormControl>
 
-              <HStack spacing={4} align="flex-start">
-                <FormControl id="logo">
-                  <FormLabel color={labelColor}>Logo (Optional)</FormLabel>
+              {/* Logo Upload */}
+              <FormControl id="logo">
+                <FormLabel color={labelColor}>Site Logo</FormLabel>
+                <HStack spacing={4} align="center">
                   <Input
                     type="file"
                     accept="image/*"
+                    onChange={handleLogoFileChange}
                     p={1}
-                    onChange={handleLogoChange}
                     bg={inputBg}
                     borderColor={borderColor}
                   />
                   {previewLogoUrl && (
-                    <Box mt={3} w="80px" h="80px" position="relative">
-                      <Image src={previewLogoUrl} alt="Logo Preview" objectFit="contain" borderRadius="md" />
+                    <Box position="relative">
+                      <Image src={previewLogoUrl} alt="Logo Preview" boxSize="100px" objectFit="contain" />
                       <Button
                         size="xs"
                         colorScheme="red"
                         position="absolute"
-                        top="-5px"
-                        right="-5px"
-                        onClick={() => setPreviewLogoUrl(undefined)}
-                        borderRadius="full"
+                        top="0"
+                        right="0"
+                        onClick={handleClearLogo}
                       >
                         X
                       </Button>
                     </Box>
                   )}
-                </FormControl>
+                  {showImageSpinners && logoFile && <Spinner size="sm" color="brand.500" />}
+                </HStack>
+              </FormControl>
 
-                <FormControl id="coverImage">
-                  <FormLabel color={labelColor}>Homepage Cover Image (Optional)</FormLabel>
+              {/* Cover Image Upload */}
+              <FormControl id="coverImage">
+                <FormLabel color={labelColor}>Cover Image</FormLabel>
+                <HStack spacing={4} align="center">
                   <Input
                     type="file"
                     accept="image/*"
+                    onChange={handleCoverImageFileChange}
                     p={1}
-                    onChange={handleCoverImageChange}
                     bg={inputBg}
                     borderColor={borderColor}
                   />
                   {previewCoverImageUrl && (
-                    <Box mt={3} w="150px" h="100px" position="relative">
-                      <Image src={previewCoverImageUrl} alt="Cover Image Preview" objectFit="cover" borderRadius="md" />
+                    <Box position="relative">
+                      <Image src={previewCoverImageUrl} alt="Cover Image Preview" boxSize="100px" objectFit="contain" />
                       <Button
                         size="xs"
                         colorScheme="red"
                         position="absolute"
-                        top="-5px"
-                        right="-5px"
-                        onClick={() => setPreviewCoverImageUrl(undefined)}
-                        borderRadius="full"
+                        top="0"
+                        right="0"
+                        onClick={handleClearCoverImage}
                       >
                         X
                       </Button>
                     </Box>
                   )}
-                </FormControl>
-              </HStack>
+                  {showImageSpinners && coverImageFile && <Spinner size="sm" color="brand.500" />}
+                </HStack>
+              </FormControl>
 
               <FormControl id="phone">
                 <FormLabel color={labelColor}>Phone Number</FormLabel>
                 <Input
-                  type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="e.g., +1234567890"
+                  placeholder="+1234567890"
                   bg={inputBg}
                   borderColor={borderColor}
+                  _placeholder={{ color: placeholderColor }}
                 />
               </FormControl>
 
               <FormControl id="email">
-                <FormLabel color={labelColor}>Email</FormLabel>
+                <FormLabel color={labelColor}>Email Address</FormLabel>
                 <Input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="contact@thechairapp.com"
+                  placeholder="contact@example.com"
                   bg={inputBg}
                   borderColor={borderColor}
+                  _placeholder={{ color: placeholderColor }}
                 />
               </FormControl>
 
               <FormControl id="location">
-                <FormLabel color={labelColor}>Physical Location</FormLabel>
+                <FormLabel color={labelColor}>Location</FormLabel>
                 <Input
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  placeholder="e.g., 123 Main St, City, Country"
+                  placeholder="123 Main St, Anytown, USA"
                   bg={inputBg}
                   borderColor={borderColor}
+                  _placeholder={{ color: placeholderColor }}
                 />
               </FormControl>
 
               <FormControl id="socialLinks">
-                <FormLabel color={labelColor}>Social Links</FormLabel>
+                <FormLabel color={labelColor}>Social Media Links</FormLabel>
                 <VStack align="stretch" spacing={2}>
                   {socialLinks.map((link, index) => (
-                    <HStack key={index} borderWidth="1px" borderColor={borderColor} p={2} borderRadius="md" justify="space-between">
-                      <Tag size="md" borderRadius="full" variant="solid" bg={tagBg} color={tagColor}>
-                        <TagLabel>{link.platform.charAt(0).toUpperCase() + link.platform.slice(1)}</TagLabel>
+                    <HStack key={index} spacing={2}>
+                      <Tag size="md" variant="solid" bg={tagBg} color={tagColor} borderRadius="full">
+                        <TagLabel>{link.platform}: {link.url}</TagLabel>
+                        <TagCloseButton onClick={() => handleRemoveSocialLink(index)} />
                       </Tag>
-                      <Text flex="1" ml={2} fontSize="sm" color={textColor} isTruncated>{link.url}</Text>
-                      <Button size="xs" colorScheme="red" onClick={() => handleRemoveSocialLink(index)}>Remove</Button>
                     </HStack>
                   ))}
                   <HStack>

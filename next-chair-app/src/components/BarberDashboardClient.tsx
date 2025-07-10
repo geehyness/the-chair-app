@@ -58,9 +58,8 @@ import type {
   Category,
   GalleryImage,
   Testimonial,
-  BlogPost,
+  BlogPost, // Keep the original BlogPost type from manage/page
   SiteSettings,
-  SocialLink,
 } from '@/app/barber-dashboard/manage/page'; // <--- UPDATED PATH HERE
 
 import { urlFor, client } from '@/lib/sanity';
@@ -80,6 +79,24 @@ interface BarberDashboardClientProps {
   blogPosts: BlogPost[];
   siteSettings: SiteSettings;
 }
+
+// Define a local interface that matches what AddBlogPostModal *expects* for its initialBlogPost prop.
+// This is a workaround because the AddBlogPostModal's expected type for 'author' is a string,
+// while the actual BlogPost type has 'author' as an object.
+// Updated to ensure 'title', 'slug', 'publishedAt', and 'coverImageUrl' are non-optional strings/objects
+// to match the expected type by the AddBlogPostModal.
+interface BlogPostForAddBlogPostModal {
+  _id?: string; // Optional for new posts or if the modal handles it
+  title: string; // Expected as non-optional string by the modal
+  slug: { current: string }; // Expected as non-optional object with 'current' string
+  author: string; // Expected as string by the modal
+  mainImage?: any; // This property is named 'mainImage' in this interface, but will receive 'coverImage' from BlogPost
+  // categories?: any[]; // Removed as BlogPost type from Sanity does not seem to have this property directly
+  publishedAt: string; // Expected as non-optional string
+  body?: any[]; // Assuming 'any[]' or optional
+  coverImageUrl: string; // Expected as non-optional string
+}
+
 
 export default function BarberDashboardClient({
   barbers: initialBarbers,
@@ -151,7 +168,7 @@ export default function BarberDashboardClient({
 
   // --- Data Fetching and Refresh Functions ---
 
-  const fetchData = useCallback(async (endpoint: string, setter: Function, type: string) => {
+  const fetchData = useCallback(async (endpoint: string, setter: React.Dispatch<React.SetStateAction<any>>, type: string) => {
     setIsLoadingData(true); // Indicate that data is being refreshed
     try {
       const response = await fetch(endpoint);
@@ -518,8 +535,8 @@ export default function BarberDashboardClient({
                           </Td>
                           <Td color={textColorSecondary}>{barber.name}</Td>
                           <Td color={textColorSecondary}>
-                            {barber.bio && Array.isArray(barber.bio) && barber.bio.length > 0 && barber.bio[0].children && barber.bio[0].children.length > 0
-                              ? barber.bio[0].children[0].text.substring(0, 50) + '...'
+                            {barber.bio && Array.isArray(barber.bio) && barber.bio.length > 0 && barber.bio[0].children && barber.bio[0].children.length > 0 ?
+                              barber.bio[0].children[0].text.substring(0, 50) + '...'
                               : 'No bio.'}
                           </Td>
                           <Td>
@@ -534,7 +551,7 @@ export default function BarberDashboardClient({
                   </Table>
                 </Box>
               ) : (
-                <Text color={textColorSecondary} textAlign="center" py={10}>No barbers found. Click "Add New Barber" to get started!</Text>
+                <Text color={textColorSecondary}>No barbers found. Add a new barber to get started.</Text>
               )}
             </TabPanel>
 
@@ -555,9 +572,10 @@ export default function BarberDashboardClient({
                       <Tr bg={tableHeaderBg}>
                         <Th color={textColorPrimary}>Image</Th>
                         <Th color={textColorPrimary}>Name</Th>
-                        <Th color={textColorPrimary}>Category</Th>
-                        <Th color={textColorPrimary}>Duration</Th>
+                        <Th color={textColorPrimary}>Description</Th>
                         <Th color={textColorPrimary}>Price</Th>
+                        <Th color={textColorPrimary}>Duration (mins)</Th>
+                        <Th color={textColorPrimary}>Category</Th>
                         <Th color={textColorPrimary}>Actions</Th>
                       </Tr>
                     </Thead>
@@ -572,9 +590,10 @@ export default function BarberDashboardClient({
                             )}
                           </Td>
                           <Td color={textColorSecondary}>{service.name}</Td>
+                          <Td color={textColorSecondary}>{service.description?.substring(0, 50)}...</Td>
+                          <Td color={textColorSecondary}>${service.price?.toFixed(2)}</Td>
+                          <Td color={textColorSecondary}>{service.duration}</Td>
                           <Td color={textColorSecondary}>{service.category?.title || 'N/A'}</Td>
-                          <Td color={textColorSecondary}>{service.duration} mins</Td>
-                          <Td color={textColorSecondary}>${service.price.toFixed(2)}</Td>
                           <Td>
                             <HStack spacing={2}>
                               <Button size="sm" colorScheme="blue" onClick={() => handleEditService(service)}>Edit</Button>
@@ -587,7 +606,7 @@ export default function BarberDashboardClient({
                   </Table>
                 </Box>
               ) : (
-                <Text color={textColorSecondary} textAlign="center" py={10}>No services found. Click "Add New Service" to get started!</Text>
+                <Text color={textColorSecondary}>No services found. Add a new service to get started.</Text>
               )}
             </TabPanel>
 
@@ -609,7 +628,7 @@ export default function BarberDashboardClient({
                         <Th color={textColorPrimary}>Name</Th>
                         <Th color={textColorPrimary}>Email</Th>
                         <Th color={textColorPrimary}>Phone</Th>
-                        <Th color={textColorPrimary}>Loyalty Points</Th>
+                        <Th color={textColorPrimary}>Total Appts.</Th>
                         <Th color={textColorPrimary}>Actions</Th>
                       </Tr>
                     </Thead>
@@ -618,8 +637,8 @@ export default function BarberDashboardClient({
                         <Tr key={customer._id} borderBottom="1px solid" borderColor={tableBorderColor}>
                           <Td color={textColorSecondary}>{customer.name}</Td>
                           <Td color={textColorSecondary}>{customer.email}</Td>
-                          <Td color={textColorSecondary}>{customer.phone || 'N/A'}</Td>
-                          <Td color={textColorSecondary}>{customer.loyaltyPoints || 0}</Td>
+                          <Td color={textColorSecondary}>{customer.phone}</Td>
+                          <Td color={textColorSecondary}>{customer.appointmentCount || 0}</Td>
                           <Td>
                             <HStack spacing={2}>
                               <Button size="sm" colorScheme="blue" onClick={() => handleEditCustomer(customer)}>Edit</Button>
@@ -632,7 +651,7 @@ export default function BarberDashboardClient({
                   </Table>
                 </Box>
               ) : (
-                <Text color={textColorSecondary} textAlign="center" py={10}>No customers found. Click "Add New Customer" to get started!</Text>
+                <Text color={textColorSecondary}>No customers found. Add a new customer to get started.</Text>
               )}
             </TabPanel>
 
@@ -640,8 +659,7 @@ export default function BarberDashboardClient({
             <TabPanel p={0} pt={4}>
               <Flex justify="space-between" align="center" mb={4}>
                 <Heading as="h2" size="lg" color={textColorPrimary}>Manage Appointments</Heading>
-                {/* Add button for new appointment if needed, or direct to booking page */}
-                <Button colorScheme="brand" as={NextLink} href="/book">Book New Appointment</Button>
+                {/* No direct "Add Appointment" button here, as appointments are usually booked by customers */}
               </Flex>
               {isLoadingData ? (
                 <Flex justify="center" align="center" minH="200px">
@@ -652,10 +670,11 @@ export default function BarberDashboardClient({
                   <Table variant="simple">
                     <Thead>
                       <Tr bg={tableHeaderBg}>
+                        <Th color={textColorPrimary}>Date</Th>
+                        <Th color={textColorPrimary}>Time</Th>
                         <Th color={textColorPrimary}>Customer</Th>
                         <Th color={textColorPrimary}>Barber</Th>
                         <Th color={textColorPrimary}>Service</Th>
-                        <Th color={textColorPrimary}>Date & Time</Th>
                         <Th color={textColorPrimary}>Status</Th>
                         <Th color={textColorPrimary}>Actions</Th>
                       </Tr>
@@ -663,16 +682,29 @@ export default function BarberDashboardClient({
                     <Tbody>
                       {appointments.map((appointment) => (
                         <Tr key={appointment._id} borderBottom="1px solid" borderColor={tableBorderColor}>
-                          <Td color={textColorSecondary}>{appointment.customer.name}</Td>
-                          <Td color={textColorSecondary}>{appointment.barber.name}</Td>
-                          <Td color={textColorSecondary}>{appointment.service.name}</Td>
-                          <Td color={textColorSecondary}>{new Date(appointment.dateTime).toLocaleString()}</Td>
-                          <Td color={textColorSecondary}>{appointment.status}</Td>
+                          <Td color={textColorSecondary}>{new Date(appointment.dateTime).toLocaleDateString()}</Td>
+                          <Td color={textColorSecondary}>{new Date(appointment.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Td>
+                          <Td color={textColorSecondary}>{appointment.customer?.name || 'N/A'}</Td>
+                          <Td color={textColorSecondary}>{appointment.barber?.name || 'N/A'}</Td>
+                          <Td color={textColorSecondary}>{appointment.service?.name || 'N/A'}</Td>
+                          <Td>
+                            <Tag
+                              size="sm"
+                              variant="subtle"
+                              colorScheme={
+                                appointment.status === 'confirmed' ? 'green' : // Green for confirmed
+                                appointment.status === 'pending' ? 'orange' :   // Orange for pending
+                                appointment.status === 'completed' ? 'purple' : // Purple for completed (distinct from confirmed)
+                                appointment.status === 'cancelled' ? 'red' : 'gray' // Red for cancelled, gray as default
+                              }
+                            >
+                              {appointment.status}
+                            </Tag>
+                          </Td>
                           <Td>
                             <HStack spacing={2}>
-                              {/* Add Edit/Status Change functionality here */}
-                              <Button size="sm" colorScheme="blue" onClick={() => alert('Implement appointment edit/status change')}>Edit</Button>
-                              <Button size="sm" colorScheme="red" onClick={() => handleDeleteClick(appointment._id, `Appointment for ${appointment.customer.name}`, 'appointment')}>Delete</Button>
+                              {/* No edit for appointments - typically managed via state changes or specific UIs */}
+                              <Button size="sm" colorScheme="red" onClick={() => handleDeleteClick(appointment._id, `Appointment on ${new Date(appointment.dateTime).toLocaleDateString()}`, 'appointment')}>Delete</Button>
                             </HStack>
                           </Td>
                         </Tr>
@@ -681,14 +713,14 @@ export default function BarberDashboardClient({
                   </Table>
                 </Box>
               ) : (
-                <Text color={textColorSecondary} textAlign="center" py={10}>No appointments found.</Text>
+                <Text color={textColorSecondary}>No appointments found.</Text>
               )}
             </TabPanel>
 
             {/* Categories Tab Panel */}
             <TabPanel p={0} pt={4}>
               <Flex justify="space-between" align="center" mb={4}>
-                <Heading as="h2" size="lg" color={textColorPrimary}>Manage Categories</Heading>
+                <Heading as="h2" size="lg" color={textColorPrimary}>Manage Service Categories</Heading>
                 <Button colorScheme="brand" onClick={handleAddCategory}>Add New Category</Button>
               </Flex>
               {isLoadingData ? (
@@ -701,7 +733,7 @@ export default function BarberDashboardClient({
                     <Thead>
                       <Tr bg={tableHeaderBg}>
                         <Th color={textColorPrimary}>Image</Th>
-                        <Th color={textColorPrimary}>Title</Th>
+                        <Th color={textColorPrimary}>Name</Th>
                         <Th color={textColorPrimary}>Description</Th>
                         <Th color={textColorPrimary}>Actions</Th>
                       </Tr>
@@ -716,8 +748,8 @@ export default function BarberDashboardClient({
                               <Box boxSize="50px" bg="gray.200" borderRadius="md" />
                             )}
                           </Td>
-                          <Td color={textColorSecondary}>{category.title}</Td>
-                          <Td color={textColorSecondary}>{category.description?.substring(0, 70) || 'No description.'}</Td>
+                         <Td color={textColorSecondary}>{category.title}</Td>
+                          <Td color={textColorSecondary}>{category.description?.substring(0, 50)}...</Td>
                           <Td>
                             <HStack spacing={2}>
                               <Button size="sm" colorScheme="blue" onClick={() => handleEditCategory(category)}>Edit</Button>
@@ -730,11 +762,11 @@ export default function BarberDashboardClient({
                   </Table>
                 </Box>
               ) : (
-                <Text color={textColorSecondary} textAlign="center" py={10}>No categories found. Click "Add New Category" to get started!</Text>
+                <Text color={textColorSecondary}>No categories found. Add a new category to get started.</Text>
               )}
             </TabPanel>
 
-            {/* Gallery Images Tab Panel */}
+            {/* Gallery Tab Panel */}
             <TabPanel p={0} pt={4}>
               <Flex justify="space-between" align="center" mb={4}>
                 <Heading as="h2" size="lg" color={textColorPrimary}>Manage Gallery Images</Heading>
@@ -750,9 +782,8 @@ export default function BarberDashboardClient({
                     <Thead>
                       <Tr bg={tableHeaderBg}>
                         <Th color={textColorPrimary}>Image</Th>
-                        <Th color={textColorPrimary}>Caption</Th>
-                        <Th color={textColorPrimary}>Tags</Th>
-                        <Th color={textColorPrimary}>Featured</Th>
+                        <Th color={textColorPrimary}>Title</Th>
+                        <Th color={textColorPrimary}>Description</Th>
                         <Th color={textColorPrimary}>Actions</Th>
                       </Tr>
                     </Thead>
@@ -761,24 +792,17 @@ export default function BarberDashboardClient({
                         <Tr key={image._id} borderBottom="1px solid" borderColor={tableBorderColor}>
                           <Td>
                             {image.imageUrl ? (
-                              <Image src={image.imageUrl} alt={image.caption || 'Gallery Image'} boxSize="70px" objectFit="cover" borderRadius="md" />
+                              <Image src={image.imageUrl} alt={image.title} boxSize="50px" objectFit="cover" borderRadius="md" />
                             ) : (
-                              <Box boxSize="70px" bg="gray.200" borderRadius="md" />
+                              <Box boxSize="50px" bg="gray.200" borderRadius="md" />
                             )}
                           </Td>
-                          <Td color={textColorSecondary}>{image.caption || 'N/A'}</Td>
-                          <Td color={textColorSecondary}>
-                            <HStack wrap="wrap">
-                              {image.tags?.map((tag, idx) => (
-                                <Tag key={idx} size="sm" variant="solid" colorScheme="teal">{tag}</Tag>
-                              ))}
-                            </HStack>
-                          </Td>
-                          <Td color={textColorSecondary}>{image.featured ? 'Yes' : 'No'}</Td>
+                          <Td color={textColorSecondary}>{image.title}</Td>
+                          <Td color={textColorSecondary}>{image.description?.substring(0, 50)}...</Td>
                           <Td>
                             <HStack spacing={2}>
                               <Button size="sm" colorScheme="blue" onClick={() => handleEditGalleryImage(image)}>Edit</Button>
-                              <Button size="sm" colorScheme="red" onClick={() => handleDeleteClick(image._id, image.caption || 'Gallery Image', 'galleryImage')}>Delete</Button>
+                              <Button size="sm" colorScheme="red" onClick={() => handleDeleteClick(image._id, image.title ?? 'Untitled', 'galleryImage')}>Delete</Button>
                             </HStack>
                           </Td>
                         </Tr>
@@ -787,7 +811,7 @@ export default function BarberDashboardClient({
                   </Table>
                 </Box>
               ) : (
-                <Text color={textColorSecondary} textAlign="center" py={10}>No gallery images found. Click "Add New Image" to get started!</Text>
+                <Text color={textColorSecondary}>No gallery images found. Add a new image to get started.</Text>
               )}
             </TabPanel>
 
@@ -807,10 +831,9 @@ export default function BarberDashboardClient({
                     <Thead>
                       <Tr bg={tableHeaderBg}>
                         <Th color={textColorPrimary}>Image</Th>
-                        <Th color={textColorPrimary}>Customer</Th>
-                        <Th color={textColorPrimary}>Quote Snippet</Th>
+                        <Th color={textColorPrimary}>Customer Name</Th>
                         <Th color={textColorPrimary}>Rating</Th>
-                        <Th color={textColorPrimary}>Date</Th>
+                        <Th color={textColorPrimary}>Comment</Th>
                         <Th color={textColorPrimary}>Actions</Th>
                       </Tr>
                     </Thead>
@@ -819,15 +842,14 @@ export default function BarberDashboardClient({
                         <Tr key={testimonial._id} borderBottom="1px solid" borderColor={tableBorderColor}>
                           <Td>
                             {testimonial.imageUrl ? (
-                              <Image src={testimonial.imageUrl} alt={testimonial.customerName} boxSize="50px" objectFit="cover" borderRadius="full" />
+                              <Image src={testimonial.imageUrl} alt={testimonial.customerName} boxSize="50px" objectFit="cover" borderRadius="md" />
                             ) : (
-                              <Box boxSize="50px" bg="gray.200" borderRadius="full" />
+                              <Box boxSize="50px" bg="gray.200" borderRadius="md" />
                             )}
                           </Td>
                           <Td color={textColorSecondary}>{testimonial.customerName}</Td>
-                          <Td color={textColorSecondary}>{testimonial.quote.substring(0, 70)}...</Td>
-                          <Td color={textColorSecondary}>{testimonial.rating} ⭐</Td>
-                          <Td color={textColorSecondary}>{testimonial.date ? new Date(testimonial.date).toLocaleDateString() : 'N/A'}</Td>
+                          <Td color={textColorSecondary}>{testimonial.rating}</Td>
+                          <Td color={textColorSecondary}>{testimonial.comment?.substring(0, 50)}...</Td>
                           <Td>
                             <HStack spacing={2}>
                               <Button size="sm" colorScheme="blue" onClick={() => handleEditTestimonial(testimonial)}>Edit</Button>
@@ -840,7 +862,7 @@ export default function BarberDashboardClient({
                   </Table>
                 </Box>
               ) : (
-                <Text color={textColorSecondary} textAlign="center" py={10}>No testimonials found. Click "Add New Testimonial" to get started!</Text>
+                <Text color={textColorSecondary}>No testimonials found. Add a new testimonial to get started.</Text>
               )}
             </TabPanel>
 
@@ -859,11 +881,10 @@ export default function BarberDashboardClient({
                   <Table variant="simple">
                     <Thead>
                       <Tr bg={tableHeaderBg}>
-                        <Th color={textColorPrimary}>Cover</Th>
+                        <Th color={textColorPrimary}>Image</Th>
                         <Th color={textColorPrimary}>Title</Th>
                         <Th color={textColorPrimary}>Author</Th>
                         <Th color={textColorPrimary}>Published Date</Th>
-                        <Th color={textColorPrimary}>Tags</Th>
                         <Th color={textColorPrimary}>Actions</Th>
                       </Tr>
                     </Thead>
@@ -872,21 +893,14 @@ export default function BarberDashboardClient({
                         <Tr key={post._id} borderBottom="1px solid" borderColor={tableBorderColor}>
                           <Td>
                             {post.coverImageUrl ? (
-                              <Image src={post.coverImageUrl} alt={post.title} boxSize="70px" objectFit="cover" borderRadius="md" />
+                              <Image src={post.coverImageUrl} alt={post.title} boxSize="50px" objectFit="cover" borderRadius="md" />
                             ) : (
-                              <Box boxSize="70px" bg="gray.200" borderRadius="md" />
+                              <Box boxSize="50px" bg="gray.200" borderRadius="md" />
                             )}
                           </Td>
                           <Td color={textColorSecondary}>{post.title}</Td>
-                          <Td color={textColorSecondary}>{post.author || 'N/A'}</Td>
+                          <Td color={textColorSecondary}>{post.author.name}</Td>
                           <Td color={textColorSecondary}>{post.publishedAt ? new Date(post.publishedAt).toLocaleDateString() : 'N/A'}</Td>
-                          <Td color={textColorSecondary}>
-                            <HStack wrap="wrap">
-                              {post.tags?.map((tag, idx) => (
-                                <Tag key={idx} size="sm" variant="solid" colorScheme="purple">{tag}</Tag>
-                              ))}
-                            </HStack>
-                          </Td>
                           <Td>
                             <HStack spacing={2}>
                               <Button size="sm" colorScheme="blue" onClick={() => handleEditBlogPost(post)}>Edit</Button>
@@ -899,14 +913,14 @@ export default function BarberDashboardClient({
                   </Table>
                 </Box>
               ) : (
-                <Text color={textColorSecondary} textAlign="center" py={10}>No blog posts found. Click "Add New Blog Post" to get started!</Text>
+                <Text color={textColorSecondary}>No blog posts found. Add a new blog post to get started.</Text>
               )}
             </TabPanel>
 
             {/* Site Settings Tab Panel */}
             <TabPanel p={0} pt={4}>
               <Flex justify="space-between" align="center" mb={4}>
-                <Heading as="h2" size="lg" color={textColorPrimary}>Manage Site Settings</Heading>
+                <Heading as="h2" size="lg" color={textColorPrimary}>Site Settings</Heading>
                 <Button colorScheme="brand" onClick={handleEditSiteSettings}>Edit Site Settings</Button>
               </Flex>
               {isLoadingData ? (
@@ -914,69 +928,67 @@ export default function BarberDashboardClient({
                   <Spinner size="xl" color="brand.500" />
                 </Flex>
               ) : (
-                <Box bg={cardBg} borderRadius="lg" shadow="md" border="1px solid" borderColor={cardBorderColor} p={6}>
+                <Box bg={cardBg} borderRadius="lg" shadow="md" p={6} border="1px solid" borderColor={cardBorderColor}>
                   <VStack align="stretch" spacing={4}>
-                    <Text fontSize="lg" fontWeight="bold" color={textColorPrimary}>Current Site Settings:</Text>
                     <Flex align="center">
-                      <Text fontWeight="semibold" minW="120px" color={textColorSecondary}>Title:</Text>
-                      <Text color={textColorPrimary}>{siteSettings.title || 'N/A'}</Text>
-                    </Flex>
-                    <Flex align="flex-start">
-                      <Text fontWeight="semibold" minW="120px" color={textColorSecondary}>Description:</Text>
-                      <Text color={textColorPrimary}>{siteSettings.description || 'N/A'}</Text>
+                      <Text fontWeight="bold" color={textColorPrimary} minW="120px">Title:</Text>
+                      <Text color={textColorSecondary}>{siteSettings.title || 'N/A'}</Text>
                     </Flex>
                     <Flex align="center">
-                      <Text fontWeight="semibold" minW="120px" color={textColorSecondary}>Phone:</Text>
-                      <Text color={textColorPrimary}>{siteSettings.phone || 'N/A'}</Text>
+                      <Text fontWeight="bold" color={textColorPrimary} minW="120px">Description:</Text>
+                      <Text color={textColorSecondary}>{siteSettings.description || 'N/A'}</Text>
                     </Flex>
                     <Flex align="center">
-                      <Text fontWeight="semibold" minW="120px" color={textColorSecondary}>Email:</Text>
-                      <Text color={textColorPrimary}>{siteSettings.email || 'N/A'}</Text>
+                      <Text fontWeight="bold" color={textColorPrimary} minW="120px">Logo:</Text>
+                      {siteSettings.logoUrl ? (
+                        <Image src={siteSettings.logoUrl} alt="Site Logo" boxSize="50px" objectFit="contain" />
+                      ) : (
+                        <Text color={textColorSecondary}>N/A</Text>
+                      )}
                     </Flex>
-                    <Flex align="flex-start">
-                      <Text fontWeight="semibold" minW="120px" color={textColorSecondary}>Location:</Text>
-                      <Text color={textColorPrimary}>{siteSettings.location || 'N/A'}</Text>
+                    <Flex align="center">
+                      <Text fontWeight="bold" color={textColorPrimary} minW="120px">Cover Image:</Text>
+                      {siteSettings.coverImageUrl ? (
+                        <Image src={siteSettings.coverImageUrl} alt="Site Cover" boxSize="100px" objectFit="contain" />
+                      ) : (
+                        <Text color={textColorSecondary}>N/A</Text>
+                      )}
                     </Flex>
-                    <Flex align="flex-start">
-                      <Text fontWeight="semibold" minW="120px" color={textColorSecondary}>Social Links:</Text>
-                      <VStack align="flex-start" spacing={1}>
+                    <Flex align="center">
+                      <Text fontWeight="bold" color={textColorPrimary} minW="120px">Phone:</Text>
+                      <Text color={textColorSecondary}>{siteSettings.phone || 'N/A'}</Text>
+                    </Flex>
+                    <Flex align="center">
+                      <Text fontWeight="bold" color={textColorPrimary} minW="120px">Email:</Text>
+                      <Text color={textColorSecondary}>{siteSettings.email || 'N/A'}</Text>
+                    </Flex>
+                    <Flex align="center">
+                      <Text fontWeight="bold" color={textColorPrimary} minW="120px">Location:</Text>
+                      <Text color={textColorSecondary}>{siteSettings.location || 'N/A'}</Text>
+                    </Flex>
+                    <Flex align="start">
+                      <Text fontWeight="bold" color={textColorPrimary} minW="120px">Social Links:</Text>
+                      <VStack align="start" spacing={1}>
                         {siteSettings.socialLinks && siteSettings.socialLinks.length > 0 ? (
                           siteSettings.socialLinks.map((link, index) => (
-                            <Text key={index} color={textColorPrimary}>
-                              {link.platform.charAt(0).toUpperCase() + link.platform.slice(1)}: <Link href={link.url} isExternal color="brand.500">{link.url}</Link>
-                            </Text>
+                            <Link key={index} href={link.url} isExternal color="brand.500">
+                              {link.platform}: {link.url}
+                            </Link>
                           ))
                         ) : (
                           <Text color={textColorSecondary}>N/A</Text>
                         )}
                       </VStack>
                     </Flex>
-                    <HStack align="flex-start">
-                      <Text fontWeight="semibold" minW="120px" color={textColorSecondary}>Logo:</Text>
-                      {siteSettings.logoUrl ? (
-                        <Image src={siteSettings.logoUrl} alt="Site Logo" boxSize="80px" objectFit="contain" borderRadius="md" />
-                      ) : (
-                        <Text color={textColorSecondary}>N/A</Text>
-                      )}
-                    </HStack>
-                    <HStack align="flex-start">
-                      <Text fontWeight="semibold" minW="120px" color={textColorSecondary}>Cover Image:</Text>
-                      {siteSettings.coverImageUrl ? (
-                        <Image src={siteSettings.coverImageUrl} alt="Homepage Cover" boxSize="150px" objectFit="cover" borderRadius="md" />
-                      ) : (
-                        <Text color={textColorSecondary}>N/A</Text>
-                      )}
-                    </HStack>
                   </VStack>
                 </Box>
               )}
             </TabPanel>
-
           </TabPanels>
         </Tabs>
       </Container>
 
-      {/* Add/Edit Barber Modal */}
+      {/* Modals */}
       <AddBarberModal
         isOpen={isAddBarberModalOpen}
         onClose={handleCloseBarberModal}
@@ -984,15 +996,14 @@ export default function BarberDashboardClient({
         initialBarber={selectedBarberToEdit}
       />
 
-      {/* Add/Edit Service Modal */}
       <AddServiceModal
         isOpen={isAddServiceModalOpen}
         onClose={handleCloseServiceModal}
         onServiceSaved={refreshServices}
         initialService={selectedServiceToEdit}
+        categories={categories} // Pass categories to service modal
       />
 
-      {/* Add/Edit Category Modal */}
       <AddCategoryModal
         isOpen={isAddCategoryModalOpen}
         onClose={handleCloseCategoryModal}
@@ -1000,7 +1011,6 @@ export default function BarberDashboardClient({
         initialCategory={selectedCategoryToEdit}
       />
 
-      {/* Add/Edit Customer Modal */}
       <AddCustomerModal
         isOpen={isAddCustomerModalOpen}
         onClose={handleCloseCustomerModal}
@@ -1008,15 +1018,13 @@ export default function BarberDashboardClient({
         initialCustomer={selectedCustomerToEdit}
       />
 
-      {/* Add/Edit Gallery Image Modal */}
       <AddGalleryImageModal
         isOpen={isAddGalleryImageModalOpen}
         onClose={handleCloseGalleryImageModal}
         onImageSaved={refreshGalleryImages}
-        initialImage={selectedGalleryImageToEdit}
+        initialImage={selectedGalleryImageToEdit} // Changed prop name to match updated interface
       />
 
-      {/* Add/Edit Testimonial Modal */}
       <AddTestimonialModal
         isOpen={isAddTestimonialModalOpen}
         onClose={handleCloseTestimonialModal}
@@ -1024,12 +1032,23 @@ export default function BarberDashboardClient({
         initialTestimonial={selectedTestimonialToEdit}
       />
 
-      {/* Add/Edit Blog Post Modal */}
       <AddBlogPostModal
         isOpen={isAddBlogPostModalOpen}
         onClose={handleCloseBlogPostModal}
         onBlogPostSaved={refreshBlogPosts}
-        initialBlogPost={selectedBlogPostToEdit}
+        // Construct an object that matches the expected type for initialBlogPost in AddBlogPostModal
+        // This explicitly converts the 'author' object to a string (the author's name)
+        initialBlogPost={selectedBlogPostToEdit ? {
+          _id: selectedBlogPostToEdit._id,
+          title: selectedBlogPostToEdit.title || '', // Ensure title is always a string
+          slug: selectedBlogPostToEdit.slug || { current: '' }, // Ensure slug is always an object
+          author: selectedBlogPostToEdit.author?.name || '', // Convert author object to string
+          mainImage: selectedBlogPostToEdit.coverImage, // Changed from .mainImage to .coverImage to match Sanity BlogPost type
+          // categories: selectedBlogPostToEdit.categories, // Removed this line as BlogPost type does not have 'categories'
+          publishedAt: selectedBlogPostToEdit.publishedAt || '', // Ensure publishedAt is always a string
+          body: selectedBlogPostToEdit.body, // Pass directly, assuming 'any[]' or optional
+          coverImageUrl: selectedBlogPostToEdit.coverImageUrl || '', // Ensure coverImageUrl is always a string
+        } as BlogPostForAddBlogPostModal : null}
       />
 
       {/* Edit Site Settings Modal */}

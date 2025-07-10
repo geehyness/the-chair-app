@@ -46,6 +46,7 @@ interface AddGalleryImageModalProps {
   onClose: () => void;
   onImageSaved: () => void; // Callback after successful create/update
   initialImage?: GalleryImage | null; // Optional prop for editing existing image
+  // Removed onGalleryImageSaved and initialGalleryImage to avoid redundancy
 }
 
 export function AddGalleryImageModal({ isOpen, onClose, onImageSaved, initialImage }: AddGalleryImageModalProps) {

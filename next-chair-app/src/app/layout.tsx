@@ -24,7 +24,8 @@ export default function RootLayout({
   const navbarType = isDashboardPage ? 'dashboard' : 'customer';
 
   // Example logout handler (implement actual logout logic)
-  const handleDashboardLogout = () => {
+  // Make handleDashboardLogout async to match Navbar's prop type expectation
+  const handleDashboardLogout = async () => {
     // In a real app, you'd clear auth tokens, redirect, etc.
     alert('Logging out from dashboard...'); // Replace with proper UI/logic
     // router.push('/login'); // Example redirect

@@ -13,7 +13,10 @@ async function uploadImageToSanity(imageFile: File | string | null): Promise<str
   if (typeof imageFile === 'string') {
     if (imageFile.startsWith('blob:') || imageFile.startsWith('data:')) {
       try {
-        const uploadedAsset = await writeClient.assets.upload('image', imageFile);
+        // Convert blob/data URL string to a Blob object
+        const response = await fetch(imageFile);
+        const blob = await response.blob();
+        const uploadedAsset = await writeClient.assets.upload('image', blob); // Pass the Blob
         return uploadedAsset._id;
       } catch (uploadError) {
         console.error("Error uploading image from string/blob:", uploadError);
@@ -90,36 +93,30 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
-    const slug = searchParams.get('slug');
 
-    let query = groq`*[_type == "category"]{
-      _id,
-      title,
-      slug,
-      description,
-      "imageUrl": image.asset->url
-    }`;
-
+    let query;
     if (id) {
-      query = groq`*[_type == "category" && _id == "${id}"][0]{
+      query = groq`*[_type == "category" && _id == $id][0]{
         _id,
+        _createdAt,
         title,
-        slug,
+        "slug": slug.current,
         description,
         "imageUrl": image.asset->url
       }`;
-    } else if (slug) {
-      query = groq`*[_type == "category" && slug.current == "${slug}"][0]{
+    } else {
+      query = groq`*[_type == "category"]|order(_createdAt desc){
         _id,
+        _createdAt,
         title,
-        slug,
+        "slug": slug.current,
         description,
         "imageUrl": image.asset->url
       }`;
     }
 
-    const categories = await client.fetch(query);
-    await logSanityInteraction('fetch', `Fetched category(s) with ID: ${id || 'all'}`, 'category', id, 'system', true, { query });
+    const categories = await client.fetch(query, id ? { id } : {}); // Pass id as a parameter if it exists
+    await logSanityInteraction('fetch', `Fetched category(s) with ID: ${id || 'all'}`, 'category', id ?? undefined, 'system', true, { query }); // Changed id to id ?? undefined
 
     return NextResponse.json(categories, { status: 200 });
   } catch (error: any) {
@@ -193,24 +190,29 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json(updatedCategory, { status: 200 });
   } catch (error: any) {
-    console.error('Error in PUT /api/categories:', error);
-    let errorMessage = 'Failed to update category.';
+    console.error('Error in POST /api/categories:', error);
+    let errorMessage = 'Failed to process category operation.';
     if (error instanceof Error) {
       errorMessage = error.message;
     } else if (typeof error === 'object' && error !== null && 'message' in error) {
       errorMessage = (error as any).message;
     }
-    await logSanityInteraction('error', `Failed to update category: ${errorMessage}`, 'category', _id, 'admin', false, { errorDetails: errorMessage, payload: 'FormData received' });
+    // Corrected line: Convert _id from string | null to string | undefined
+    await logSanityInteraction('error', `Failed to update category: ${errorMessage}`, 'category', _id ?? undefined, 'admin', false, { errorDetails: errorMessage, payload: 'FormData received' });
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }
 
 export async function DELETE(req: NextRequest) {
+  let id: string | null = null; // Declare id outside the try block and initialize it to null
+
   try {
     const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
+    id = searchParams.get('id'); // Assign value to the outer-scoped id
 
     if (!id) {
+      // Log this specific error as well
+      await logSanityInteraction('error', 'Category ID is missing for deletion request.', 'category', undefined, 'admin', false);
       return NextResponse.json({ message: 'Category ID is required for deletion' }, { status: 400 });
     }
 
@@ -232,7 +234,8 @@ export async function DELETE(req: NextRequest) {
     } else if (typeof error === 'object' && error !== null && 'message' in error) {
       errorMessage = (error as any).message;
     }
-    await logSanityInteraction('error', `Failed to delete category: ${errorMessage}`, 'category', id, 'admin', false, { errorDetails: errorMessage, payload: 'Category ID: ' + id });
+    // Now 'id' is accessible here
+    await logSanityInteraction('error', `Failed to delete category: ${errorMessage}`, 'category', id ?? undefined, 'admin', false, { errorDetails: errorMessage });
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }

@@ -53,13 +53,13 @@ export function PageTransitionOverlay({ isTransitioning, onTransitionEnd }: Page
     }
   };
 
+// Spinner color from theme
+  const spinnerColor = useColorModeValue('brand.500', 'brand.300');
+
   if (animationPhase === 'idle' && !isTransitioning) {
     return null; // Don't render anything when no animation is active
   }
-
-  // Spinner color from theme
-  const spinnerColor = useColorModeValue('brand.500', 'brand.300');
-
+  
   return (
     <Box
       position="fixed"

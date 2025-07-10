@@ -13,7 +13,10 @@ async function uploadImageToSanity(imageFile: File | string | null): Promise<str
   if (typeof imageFile === 'string') {
     if (imageFile.startsWith('blob:') || imageFile.startsWith('data:')) {
       try {
-        const uploadedAsset = await writeClient.assets.upload('image', imageFile);
+        // Convert the string (blob or data URL) to a Blob object
+        const response = await fetch(imageFile);
+        const blob = await response.blob();
+        const uploadedAsset = await writeClient.assets.upload('image', blob); // Pass the Blob
         return uploadedAsset._id;
       } catch (uploadError) {
         console.error("Error uploading image from string/blob:", uploadError);
@@ -111,7 +114,7 @@ export async function GET(req: NextRequest) {
     }
 
     const testimonials = await client.fetch(query);
-    await logSanityInteraction('fetch', `Fetched testimonial(s) with ID: ${id || 'all'}`, 'testimonial', id, 'system', true, { query });
+    await logSanityInteraction('fetch', `Fetched testimonial(s) with ID: ${id || 'all'}`, 'testimonial', id ?? undefined, 'system', true, { query });
 
     return NextResponse.json(testimonials, { status: 200 });
   } catch (error: any) {
@@ -194,15 +197,16 @@ export async function PUT(req: NextRequest) {
     } else if (typeof error === 'object' && error !== null && 'message' in error) {
       errorMessage = (error as any).message;
     }
-    await logSanityInteraction('error', `Failed to update testimonial: ${errorMessage}`, 'testimonial', _id, 'admin', false, { errorDetails: errorMessage, payload: 'FormData received' });
+    await logSanityInteraction('error', `Failed to update testimonial: ${errorMessage}`, 'testimonial', _id ?? undefined, 'admin', false, { errorDetails: errorMessage, payload: 'FormData received' });
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }
 
 export async function DELETE(req: NextRequest) {
+  let id: string | null = null; // Declare id here, outside the try block
   try {
     const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
+    id = searchParams.get('id');
 
     if (!id) {
       return NextResponse.json({ message: 'Testimonial ID is required for deletion' }, { status: 400 });
@@ -226,7 +230,7 @@ export async function DELETE(req: NextRequest) {
     } else if (typeof error === 'object' && error !== null && 'message' in error) {
       errorMessage = (error as any).message;
     }
-    await logSanityInteraction('error', `Failed to delete testimonial: ${errorMessage}`, 'testimonial', id, 'admin', false, { errorDetails: errorMessage, payload: 'Testimonial ID: ' + id });
+    await logSanityInteraction('error', `Failed to delete testimonial: ${errorMessage}`, 'testimonial', id ?? undefined, 'admin', false, { errorDetails: errorMessage, payload: 'Testimonial ID: ' + (id || 'N/A') });
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }

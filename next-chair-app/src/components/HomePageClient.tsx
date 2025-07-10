@@ -129,12 +129,13 @@ export default function HomePageClient({ barbers, services, siteSettings }: Home
           height="100%"
           align="center"
           justify="center"
-          bg="rgba(0,0,0,0.6)" // Semi-transparent overlay
+          bg="rgba(0,0,0,0.7)" // Semi-transparent overlay
           direction="column"
           textAlign="center"
           px={4}
         >
           <VStack spacing={4}>
+            <br /><br />
             <Heading as="h1" size={{ base: '2xl', md: '3xl', lg: '4xl' }} color="white">
               {siteSettings.title || 'The Chair App'}
             </Heading>
@@ -156,6 +157,11 @@ export default function HomePageClient({ barbers, services, siteSettings }: Home
               Book Your Appointment
             </Button>
 
+
+            <Text fontSize={{ base: 'lg', md: 'xl' }} color="whiteAlpha.800" maxW="lg" marginTop={12}>
+                          {'Explore'}
+                        </Text>
+
             {/* Scroll Down Arrow - Moved inside VStack */}
             <Button
               variant="ghost"
@@ -165,7 +171,7 @@ export default function HomePageClient({ barbers, services, siteSettings }: Home
               aria-label="Scroll to content"
               zIndex={10}
               transition="all 0.3s ease-in-out"
-              mt={8} // Add margin top to separate from the button above
+              mt={0} // Add margin top to separate from the button above
             >
               <Icon as={FaChevronDown} boxSize={8} />
             </Button>

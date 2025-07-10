@@ -13,7 +13,10 @@ async function uploadImageToSanity(imageFile: File | string | null): Promise<str
   if (typeof imageFile === 'string') {
     if (imageFile.startsWith('blob:') || imageFile.startsWith('data:')) {
       try {
-        const uploadedAsset = await writeClient.assets.upload('image', imageFile);
+        // Fetch the blob/data URL to get a Blob object
+        const response = await fetch(imageFile);
+        const blob = await response.blob();
+        const uploadedAsset = await writeClient.assets.upload('image', blob);
         return uploadedAsset._id;
       } catch (uploadError) {
         console.error("Error uploading image from string/blob:", uploadError);
@@ -66,7 +69,7 @@ export async function POST(req: NextRequest) {
       coverImageAssetRefId = await uploadImageToSanity(coverImageFile);
     }
 
-    const blogPostDoc: any = {
+    const blogPostDoc: any = { // Consider defining a more specific type than 'any'
       _type: 'blogPost',
       title,
       slug: {
@@ -102,7 +105,7 @@ export async function POST(req: NextRequest) {
     await logSanityInteraction('create', `Created new blog post: ${title}`, 'blogPost', newBlogPost._id, 'admin', true, { payload: blogPostDoc });
 
     return NextResponse.json(newBlogPost, { status: 201 });
-  } catch (error: any) {
+  } catch (error: any) { // Consider defining a more specific type than 'any'
     console.error('Error in POST /api/blogPosts:', error);
     let errorMessage = 'Failed to create blog post.';
     if (error instanceof Error) {
@@ -116,9 +119,10 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  let id: string | null = null; // <--- Declared outside try block
   try {
     const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
+    id = searchParams.get('id');
     const slug = searchParams.get('slug');
 
     let query = groq`*[_type == "blogPost"]{
@@ -160,10 +164,12 @@ export async function GET(req: NextRequest) {
     }
 
     const blogPosts = await client.fetch(query);
-    await logSanityInteraction('fetch', `Fetched blog post(s) with ID: ${id || 'all'}`, 'blogPost', id, 'system', true, { query });
+    // Convert 'id' from string | null to string | undefined for logSanityInteraction
+    const documentIdForLog = id !== null ? id : undefined;
+    await logSanityInteraction('fetch', `Fetched blog post(s) with ID: ${id || 'all'}`, 'blogPost', documentIdForLog, 'system', true, { query });
 
     return NextResponse.json(blogPosts, { status: 200 });
-  } catch (error: any) {
+  } catch (error: any) { // Consider defining a more specific type than 'any'
     console.error('Error in GET /api/blogPosts:', error);
     let errorMessage = 'Failed to fetch blog posts.';
     if (error instanceof Error) {
@@ -171,13 +177,15 @@ export async function GET(req: NextRequest) {
     } else if (typeof error === 'object' && error !== null && 'message' in error) {
       errorMessage = (error as any).message;
     }
-    await logSanityInteraction('error', `Failed to fetch blog posts: ${errorMessage}`, 'blogPost', undefined, 'system', false, { errorDetails: errorMessage });
+    // Convert 'id' from string | null to string | undefined for logSanityInteraction in catch block
+    const documentIdForLogError = id !== null ? id : undefined;
+    await logSanityInteraction('error', `Failed to fetch blog posts: ${errorMessage}`, 'blogPost', documentIdForLogError, 'system', false, { errorDetails: errorMessage }); // <--- FIXED HERE
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }
 
 export async function PUT(req: NextRequest) {
-  let _id: string | null = null;
+  let _id: string | null = null; // <--- Declared outside try block
   try {
     const { searchParams } = new URL(req.url);
     _id = searchParams.get('id');
@@ -213,7 +221,7 @@ export async function PUT(req: NextRequest) {
     const oldCoverImageAssetRef = currentBlogPost?.coverImage?.asset?._ref;
 
     const patch = writeClient.patch(_id);
-    const updates: any = {};
+    const updates: any = {}; // Consider defining a more specific type than 'any'
 
     if (title !== undefined) updates.title = title;
     if (slug !== undefined) updates.slug = { _type: 'slug', current: slug };
@@ -250,19 +258,21 @@ export async function PUT(req: NextRequest) {
     }
 
     const updatedBlogPost = await patch.set(updates).commit();
-    await logSanityInteraction('update', `Updated blog post: ${title || _id}`, 'blogPost', _id, 'admin', true, { payload: updates });
+    // Convert '_id' from string | null to string | undefined for logSanityInteraction
+    const documentIdForLogPut = _id !== null ? _id : undefined;
+    await logSanityInteraction('update', `Updated blog post: ${title || _id}`, 'blogPost', documentIdForLogPut, 'admin', true, { payload: updates });
 
     if (oldCoverImageAssetRef && (coverImageFile instanceof File || coverImageFile === 'null')) {
       try {
         await writeClient.delete(oldCoverImageAssetRef);
-        await logSanityInteraction('delete', `Deleted old blog post cover image asset: ${oldCoverImageAssetRef}`, 'blogPost', _id, 'admin', true);
+        await logSanityInteraction('delete', `Deleted old blog post cover image asset: ${oldCoverImageAssetRef}`, 'blogPost', documentIdForLogPut, 'admin', true);
       } catch (deleteError) {
         console.warn(`Could not delete old Sanity asset ${oldCoverImageAssetRef}:`, deleteError);
       }
     }
 
     return NextResponse.json(updatedBlogPost, { status: 200 });
-  } catch (error: any) {
+  } catch (error: any) { // Consider defining a more specific type than 'any'
     console.error('Error in PUT /api/blogPosts:', error);
     let errorMessage = 'Failed to update blog post.';
     if (error instanceof Error) {
@@ -270,15 +280,18 @@ export async function PUT(req: NextRequest) {
     } else if (typeof error === 'object' && error !== null && 'message' in error) {
       errorMessage = (error as any).message;
     }
-    await logSanityInteraction('error', `Failed to update blog post: ${errorMessage}`, 'blogPost', _id, 'admin', false, { errorDetails: errorMessage, payload: 'FormData received' });
+    // Convert '_id' from string | null to string | undefined for logSanityInteraction
+    const documentIdForLogErrorPut = _id !== null ? _id : undefined;
+    await logSanityInteraction('error', `Failed to update blog post: ${errorMessage}`, 'blogPost', documentIdForLogErrorPut, 'admin', false, { errorDetails: errorMessage, payload: 'FormData received' });
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }
 
 export async function DELETE(req: NextRequest) {
+  let id: string | null = null; // <--- Declared outside try block
   try {
     const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
+    id = searchParams.get('id');
 
     if (!id) {
       return NextResponse.json({ message: 'Blog Post ID is required for deletion' }, { status: 400 });
@@ -294,7 +307,7 @@ export async function DELETE(req: NextRequest) {
     await logSanityInteraction('delete', `Deleted blog post with ID: ${id}`, 'blogPost', id, 'admin', true);
 
     return NextResponse.json({ message: 'Blog post deleted successfully' }, { status: 200 });
-  } catch (error: any) {
+  } catch (error: any) { // Consider defining a more specific type than 'any'
     console.error('Error in DELETE /api/blogPosts:', error);
     let errorMessage = 'Failed to delete blog post.';
     if (error instanceof Error) {
@@ -302,7 +315,9 @@ export async function DELETE(req: NextRequest) {
     } else if (typeof error === 'object' && error !== null && 'message' in error) {
       errorMessage = (error as any).message;
     }
-    await logSanityInteraction('error', `Failed to delete blog post: ${errorMessage}`, 'blogPost', id, 'admin', false, { errorDetails: errorMessage, payload: 'Blog Post ID: ' + id });
+    // Convert 'id' from string | null to string | undefined for logSanityInteraction
+    const documentIdForLogErrorDelete = id !== null ? id : undefined;
+    await logSanityInteraction('error', `Failed to delete blog post: ${errorMessage}`, 'blogPost', documentIdForLogErrorDelete, 'admin', false, { errorDetails: errorMessage, payload: 'Blog Post ID: ' + id }); // <--- FIXED HERE
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }

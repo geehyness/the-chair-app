@@ -12,6 +12,7 @@ export interface Barber {
   _id: string;
   name: string;
   dailyAvailability: Array<{
+    _key: string; // Add _key here to match BookingForm's DailyAvailability
     dayOfWeek: string;
     startTime: string;
     endTime: string;

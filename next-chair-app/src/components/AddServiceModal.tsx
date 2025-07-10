@@ -39,6 +39,7 @@ interface Service {
   price: number;
   category?: { _id: string; title: string }; // Expanded category
   barbers?: Array<{ _id: string; name: string }>; // Expanded barbers
+  image?: { asset: { _ref: string } }; // Added the 'image' property
 }
 
 interface Category {
@@ -55,79 +56,82 @@ interface AddServiceModalProps {
   isOpen: boolean;
   onClose: () => void;
   onServiceSaved: () => void; // Callback after successful create/update
-  initialService?: Service | null; // Optional prop for editing existing service
+  initialService?: Service | null;
+  categories: Category[]; // Add this line
 }
 
-export function AddServiceModal({ isOpen, onClose, onServiceSaved, initialService }: AddServiceModalProps) {
-  const toast = useToast();
+export const AddServiceModal: React.FC<AddServiceModalProps> = ({
+  isOpen,
+  onClose,
+  onServiceSaved,
+  initialService,
+  categories, // Destructure categories here
+}) => {
   const [name, setName] = useState(initialService?.name || '');
-  const [slug, setSlug] = useState(initialService?.slug?.current || '');
   const [description, setDescription] = useState(initialService?.description || '');
-  const [duration, setDuration] = useState(initialService?.duration || 0);
+  const [duration, setDuration] = useState(initialService?.duration || 30);
   const [price, setPrice] = useState(initialService?.price || 0);
-  const [selectedCategory, setSelectedCategory] = useState(initialService?.category?._id || '');
+  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(initialService?.category?._id);
   const [selectedBarbers, setSelectedBarbers] = useState<string[]>(initialService?.barbers?.map(b => b._id) || []);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [previewImageUrl, setPreviewImageUrl] = useState<string | undefined>(initialService?.imageUrl || undefined);
-
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [barbers, setBarbers] = useState<Barber[]>([]);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | undefined>(initialService?.imageUrl);
   const [isLoading, setIsLoading] = useState(false);
-  const [dataLoading, setDataLoading] = useState(true); // State for loading categories/barbers
+  const [barbers, setBarbers] = useState<Barber[]>([]); // State to hold barbers
+  const toast = useToast();
 
-  // Chakra UI color mode values
+  // Chakra UI color mode hooks
   const modalBg = useColorModeValue('white', 'gray.700');
   const textColor = useColorModeValue('gray.800', 'white');
   const labelColor = useColorModeValue('gray.600', 'gray.300');
-  const inputBg = useColorModeValue('gray.50', 'gray.600');
+  const inputBg = useColorModeValue('white', 'gray.600');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
-  const spinnerColor = useColorModeValue('brand.500', 'brand.200');
 
   useEffect(() => {
-    // Reset form fields when modal is opened or initialService changes
+    // Fetch barbers when the modal opens or categories change
     if (isOpen) {
-      setName(initialService?.name || '');
-      setSlug(initialService?.slug?.current || '');
-      setDescription(initialService?.description || '');
-      setDuration(initialService?.duration || 0);
-      setPrice(initialService?.price || 0);
-      setSelectedCategory(initialService?.category?._id || '');
-      setSelectedBarbers(initialService?.barbers?.map(b => b._id) || []);
-      setPreviewImageUrl(initialService?.imageUrl || undefined);
-      setImageFile(null); // Clear image file on open
-
-      const fetchRelatedData = async () => {
-        setDataLoading(true);
+      const fetchBarbers = async () => {
         try {
-          const [fetchedCategories, fetchedBarbers] = await Promise.all([
-            client.fetch(groq`*[_type == "category"]{_id, title}`),
-            client.fetch(groq`*[_type == "barber"]{_id, name}`),
-          ]);
-          setCategories(fetchedCategories);
+          const query = groq`*[_type == "barber"]{_id, name}`;
+          const fetchedBarbers = await client.fetch(query);
           setBarbers(fetchedBarbers);
         } catch (error) {
-          console.error('Failed to fetch categories or barbers:', error);
+          console.error('Error fetching barbers:', error);
           toast({
-            title: 'Error loading data.',
-            description: 'Could not load categories or barbers. Please try again.',
+            title: 'Error fetching barbers',
+            description: 'Could not load barbers for selection.',
             status: 'error',
             duration: 5000,
             isClosable: true,
           });
-        } finally {
-          setDataLoading(false);
         }
       };
-      fetchRelatedData();
+      fetchBarbers();
     }
-  }, [isOpen, initialService, toast]);
+  }, [isOpen, toast]);
 
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newName = e.target.value;
-    setName(newName);
-    // Generate slug from name
-    setSlug(newName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
-  };
+  // Effect to update form fields when initialService changes (for editing)
+  useEffect(() => {
+    if (initialService) {
+      setName(initialService.name);
+      setDescription(initialService.description || '');
+      setDuration(initialService.duration);
+      setPrice(initialService.price);
+      setSelectedCategory(initialService.category?._id);
+      setSelectedBarbers(initialService.barbers?.map(b => b._id) || []);
+      setPreviewImageUrl(initialService.imageUrl);
+      setImageFile(null); // Clear image file when setting initialService
+    } else {
+      // Reset form for new service if no initialService
+      setName('');
+      setDescription('');
+      setDuration(30);
+      setPrice(0);
+      setSelectedCategory(undefined);
+      setSelectedBarbers([]);
+      setPreviewImageUrl(undefined);
+      setImageFile(null);
+    }
+  }, [initialService]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -136,86 +140,85 @@ export function AddServiceModal({ isOpen, onClose, onServiceSaved, initialServic
       setPreviewImageUrl(URL.createObjectURL(file)); // Create a preview URL
     } else {
       setImageFile(null);
-      setPreviewImageUrl(initialService?.imageUrl || undefined); // Revert to initial if no new file
+      setPreviewImageUrl(undefined);
     }
-  };
-
-  const handleBarberSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const options = Array.from(e.target.selectedOptions).map(option => option.value);
-    setSelectedBarbers(options);
   };
 
   const handleSubmit = async () => {
-    if (!name || !slug || duration === 0 || price === 0) {
-      toast({
-        title: 'Missing fields.',
-        description: 'Please fill in all required fields (Name, Duration, Price).',
-        status: 'warning',
-        duration: 5000,
-        isClosable: true,
-      });
-      return;
-    }
-
     setIsLoading(true);
+    let uploadedAssetRef = initialService?.image?.asset?._ref; // Keep existing asset ref for updates
 
     try {
-      const formData = new FormData();
-      formData.append('name', name);
-      formData.append('slug', slug);
-      formData.append('duration', duration.toString());
-      formData.append('price', price.toString());
-
-      if (description) {
-        formData.append('description', description);
-      }
-      if (selectedCategory) {
-        formData.append('categoryId', selectedCategory);
-      }
-      if (selectedBarbers.length > 0) {
-        formData.append('barberIds', JSON.stringify(selectedBarbers)); // Stringify array
-      }
-
+      // 1. Handle image upload if a new file is selected
       if (imageFile) {
-        formData.append('image', imageFile); // Append the actual File object
-      } else if (initialService && !previewImageUrl && !imageFile) {
-        // If it was an existing service, and image was removed, send 'null' to explicitly remove
-        formData.append('image', 'null');
-      }
-      // If initialService.imageUrl exists and no new file, and previewImageUrl is still set,
-      // no 'image' field is appended. The server will retain the existing image.
-
-      const endpoint = initialService ? `/api/services?id=${initialService._id}` : '/api/services';
-      const method = initialService ? 'PUT' : 'POST';
-
-      const response = await fetch(endpoint, {
-        method,
-        // IMPORTANT: No 'Content-Type' header needed here; browser sets it automatically for FormData
-        body: formData, // Send FormData directly
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save service.');
+        const uploadedAsset = await writeClient.assets.upload('image', imageFile);
+        uploadedAssetRef = uploadedAsset._id;
       }
 
-      toast({
-        title: `Service ${initialService ? 'updated' : 'created'}.`,
-        description: `Service "${name}" has been successfully ${initialService ? 'updated' : 'created'}.`,
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-      });
+      // Prepare barber references
+      const barberReferences = selectedBarbers.map(barberId => ({
+        _ref: barberId,
+        _type: 'reference',
+      }));
 
-      onServiceSaved(); // Trigger data re-fetch in parent component
+      // Prepare the service document
+      const serviceDoc = {
+        _type: 'service',
+        name,
+        slug: {
+          _type: 'slug',
+          current: name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, ''),
+        },
+        description,
+        duration,
+        price,
+        ...(selectedCategory && { category: { _ref: selectedCategory, _type: 'reference' } }),
+        ...(barberReferences.length > 0 && { barbers: barberReferences }),
+        ...(uploadedAssetRef && {
+          image: {
+            _type: 'image',
+            asset: {
+              _type: 'reference',
+              _ref: uploadedAssetRef,
+            },
+          },
+        }),
+      };
+
+      if (initialService?._id) {
+        // Update existing service
+        await writeClient
+          .patch(initialService._id)
+          .set(serviceDoc)
+          .commit();
+        toast({
+          title: 'Service updated.',
+          description: `Service "${name}" has been updated.`,
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+      } else {
+        // Create new service
+        await writeClient.create(serviceDoc);
+        toast({
+          title: 'Service created.',
+          description: `Service "${name}" has been added.`,
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+
+      onServiceSaved(); // Trigger refresh in parent component
       onClose(); // Close the modal
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving service:', error);
       toast({
-        title: `Error ${initialService ? 'updating' : 'creating'} service.`,
-        description: error.message || 'There was an error saving the service. Please try again.',
+        title: 'Error saving service',
+        description: 'There was an error saving the service. Please try again.',
         status: 'error',
-        duration: 9000,
+        duration: 5000,
         isClosable: true,
       });
     } finally {
@@ -226,51 +229,24 @@ export function AddServiceModal({ isOpen, onClose, onServiceSaved, initialServic
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="xl">
       <ModalOverlay />
-      <ModalContent bg={modalBg} color={textColor} borderRadius="lg" overflow="hidden">
-        <ModalHeader borderBottom="1px solid" borderColor={borderColor} pb={3}>
+      <ModalContent bg={modalBg} color={textColor}>
+        <ModalHeader borderBottom="1px solid" borderColor={borderColor}>
           {initialService ? 'Edit Service' : 'Add New Service'}
         </ModalHeader>
         <ModalCloseButton />
-        <ModalBody p={6}>
-          {dataLoading ? (
-            <Flex justify="center" align="center" height="200px">
-              <Spinner size="xl" color={spinnerColor} />
+        <ModalBody>
+          {isLoading && !initialService ? ( // Show spinner only on initial load for new service
+            <Flex justify="center" align="center" minH="200px">
+              <Spinner size="xl" color="brand.500" />
             </Flex>
           ) : (
-            <VStack spacing={4} align="stretch">
-              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-                <FormControl id="name" isRequired>
-                  <FormLabel color={labelColor}>Service Name</FormLabel>
-                  <Input
-                    value={name}
-                    onChange={handleNameChange}
-                    placeholder="e.g., Haircut, Beard Trim"
-                    bg={inputBg}
-                    borderColor={borderColor}
-                  />
-                </FormControl>
-
-                <FormControl id="duration" isRequired>
-                  <FormLabel color={labelColor}>Duration (minutes)</FormLabel>
-                  <Input
-                    type="number"
-                    value={duration === 0 ? '' : duration} // Display empty if 0
-                    onChange={(e) => setDuration(Number(e.target.value))}
-                    placeholder="e.g., 30, 60"
-                    bg={inputBg}
-                    borderColor={borderColor}
-                  />
-                </FormControl>
-              </SimpleGrid>
-
-              <FormControl id="price" isRequired>
-                <FormLabel color={labelColor}>Price ($)</FormLabel>
+            <VStack spacing={4} align="stretch" py={4}>
+              <FormControl id="name" isRequired>
+                <FormLabel color={labelColor}>Service Name</FormLabel>
                 <Input
-                  type="number"
-                  value={price === 0 ? '' : price} // Display empty if 0
-                  onChange={(e) => setPrice(Number(e.target.value))}
-                  placeholder="e.g., 25.00, 50.00"
-                  step="0.01"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g., Haircut, Beard Trim"
                   bg={inputBg}
                   borderColor={borderColor}
                 />
@@ -281,19 +257,45 @@ export function AddServiceModal({ isOpen, onClose, onServiceSaved, initialServic
                 <Textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="A brief description of the service..."
-                  rows={3}
+                  placeholder="Brief description of the service"
                   bg={inputBg}
                   borderColor={borderColor}
                 />
               </FormControl>
 
+              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                <FormControl id="duration" isRequired>
+                  <FormLabel color={labelColor}>Duration (minutes)</FormLabel>
+                  <Input
+                    type="number"
+                    value={duration}
+                    onChange={(e) => setDuration(parseInt(e.target.value) || 0)}
+                    min={0}
+                    bg={inputBg}
+                    borderColor={borderColor}
+                  />
+                </FormControl>
+
+                <FormControl id="price" isRequired>
+                  <FormLabel color={labelColor}>Price</FormLabel>
+                  <Input
+                    type="number"
+                    value={price}
+                    onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
+                    step="0.01"
+                    min={0}
+                    bg={inputBg}
+                    borderColor={borderColor}
+                  />
+                </FormControl>
+              </SimpleGrid>
+
               <FormControl id="category">
                 <FormLabel color={labelColor}>Category</FormLabel>
                 <Select
+                  placeholder="Select category"
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
-                  placeholder="Select category (Optional)"
                   bg={inputBg}
                   borderColor={borderColor}
                 >
@@ -306,16 +308,18 @@ export function AddServiceModal({ isOpen, onClose, onServiceSaved, initialServic
               </FormControl>
 
               <FormControl id="barbers">
-                <FormLabel color={labelColor}>Barbers who perform this service</FormLabel>
+                <FormLabel color={labelColor}>Available Barbers</FormLabel>
                 <Select
-                  multiple // Enable multiple selection
+                  placeholder="Select barbers"
+                  multiple
                   value={selectedBarbers}
-                  onChange={handleBarberSelectChange}
-                  placeholder="Select barbers (Optional)"
+                  onChange={(e) =>
+                    setSelectedBarbers(
+                      Array.from(e.target.selectedOptions, (option) => option.value)
+                    )
+                  }
                   bg={inputBg}
                   borderColor={borderColor}
-                  height="120px" // Provide enough height for multiple options
-                  overflowY="auto"
                 >
                   {barbers.map((barber) => (
                     <option key={barber._id} value={barber._id}>

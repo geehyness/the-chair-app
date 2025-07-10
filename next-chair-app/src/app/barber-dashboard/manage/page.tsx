@@ -42,97 +42,88 @@ export interface Customer {
   phone?: string;
   loyaltyPoints?: number;
   notes?: string;
+  appointmentCount?: number; // NEW: Add appointmentCount property
 }
 
 export interface Appointment {
   _id: string;
   customer: { _id: string; name: string; email: string };
   barber: { _id: string; name: string };
-  service: { _id: string; name: string };
+  service: { _id: string; name: string; duration: number; price: number };
   dateTime: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   notes?: string;
-  log?: Array<{
-    _key: string;
-    timestamp: string;
-    type: string;
-    message: string;
-  }>;
 }
 
 export interface Category {
   _id: string;
-  title: string;
+  title: string; // This is already the field for the category's name
   slug: { current: string };
-  description?: string;
   image?: { asset: { _ref: string } };
-  imageUrl?: string; // Derived URL for client
+  imageUrl?: string;
+  description?: string;
 }
 
 export interface GalleryImage {
+  title: string | undefined;
+  description: any;
   _id: string;
-  image?: { asset: { _ref: string } };
-  imageUrl?: string; // Derived URL for client
   caption?: string;
   tags?: string[];
-  featured?: boolean;
+  image: { asset: { _ref: string } };
+  imageUrl?: string;
 }
 
 export interface Testimonial {
+  comment: any;
   _id: string;
   customerName: string;
   quote: string;
   rating: number;
-  date?: string;
   image?: { asset: { _ref: string } };
-  imageUrl?: string; // Derived URL for client
+  imageUrl?: string;
 }
 
 export interface BlogPost {
   _id: string;
   title: string;
   slug: { current: string };
-  publishedAt?: string;
-  excerpt?: string;
-  content?: any; // Portable Text
+  author: { _id: string; name: string };
+  publishedAt: string;
+  body: any; // Portable Text
   coverImage?: { asset: { _ref: string } };
-  coverImageUrl?: string; // Derived URL for client
-  author?: string;
-  tags?: string[];
-}
-
-export interface SocialLink {
-  platform: string;
-  url: string;
+  coverImageUrl?: string;
+  excerpt?: string;
 }
 
 export interface SiteSettings {
-  _id?: string;
-  title?: string;
-  description?: string;
-  logo?: any;
+  title: string;
+  location: string;
+  _id: string;
+  siteName: string;
+  logo?: { asset: { _ref: string } };
   logoUrl?: string;
-  coverImage?: any;
-  coverImageUrl?: string;
+  tagline?: string;
+  description?: string;
+  address?: string;
   phone?: string;
   email?: string;
-  location?: string;
-  socialLinks?: SocialLink[];
+  socialLinks?: Array<{
+    _key: string;
+    platform: string;
+    url: string;
+  }>;
+  openingHours?: Array<{
+    _key: string;
+    day: string;
+    hours: string;
+  }>;
+  coverImage?: { asset: { _ref: string } };
+  coverImageUrl?: string;
 }
 
-
-// Function to fetch all necessary data on the server
-async function getDashboardData(): Promise<{
-  barbers: Barber[];
-  services: Service[];
-  customers: Customer[];
-  appointments: Appointment[];
-  categories: Category[];
-  galleryImages: GalleryImage[];
-  testimonials: Testimonial[];
-  blogPosts: BlogPost[];
-  siteSettings: SiteSettings;
-}> {
+// Function to fetch all dashboard data
+async function getDashboardData() {
   const query = groq`
     {
       "barbers": *[_type == "barber"]{
@@ -141,105 +132,92 @@ async function getDashboardData(): Promise<{
         slug,
         image,
         bio,
-        dailyAvailability[] {
+        dailyAvailability[]{
           _key,
           dayOfWeek,
           startTime,
           endTime
         }
-      },
-      "services": *[_type == "service"] | order(price asc){
+      } | order(name asc),
+      "services": *[_type == "service"]{
         _id,
         name,
         description,
         duration,
         price,
         slug,
-        image, // Fetch image for services
-        category->{_id, title}, // Fetch category reference
-        barbers[]->{_id, name} // Fetch barbers reference
-      },
+        category->{_id, title},
+        barbers[]->{_id, name},
+        image
+      } | order(name asc),
       "customers": *[_type == "customer"]{
         _id,
         name,
         email,
         phone,
-        loyaltyPoints, // Added
-        notes // Added
-      },
-      "appointments": *[_type == "appointment"] | order(dateTime desc){
+        loyaltyPoints,
+        notes,
+        "appointmentCount": count(*[_type == "appointment" && customer._ref == ^._id]), // NEW: Calculate appointment count
+      } | order(name asc),
+      "appointments": *[_type == "appointment"]{
         _id,
         customer->{_id, name, email},
         barber->{_id, name},
-        service->{_id, name},
+        service->{_id, name, duration, price},
         dateTime,
         status,
-        notes,
-        log[]{
-          _key,
-          timestamp,
-          type,
-          message,
-          user,
-          details
-        }
-      },
+        notes
+      } | order(dateTime desc),
       "categories": *[_type == "category"]{
         _id,
         title,
         slug,
-        description,
-        image // Fetch image for categories
-      },
+        image,
+        description
+      } | order(title asc),
       "galleryImages": *[_type == "galleryImage"]{
         _id,
-        image, // Fetch Sanity image object
         caption,
         tags,
-        featured
-      },
+        image
+      } | order(_createdAt desc),
       "testimonials": *[_type == "testimonial"]{
         _id,
         customerName,
         quote,
         rating,
-        date,
-        image // Fetch Sanity image object
-      },
+        image
+      } | order(_createdAt desc),
       "blogPosts": *[_type == "blogPost"]{
         _id,
         title,
         slug,
+        author->{_id, name},
         publishedAt,
-        excerpt,
-        content, // Fetch content for blog posts
-        coverImage, // Fetch Sanity image object
-        author,
-        tags
-      },
+        body,
+        coverImage,
+        excerpt
+      } | order(publishedAt desc),
       "siteSettings": *[_type == "siteSettings"][0]{
         _id,
-        title,
+        siteName,
+        logo,
+        tagline,
         description,
-        logo, // Fetch Sanity image object
-        coverImage, // Fetch Sanity image object
+        address,
         phone,
         email,
-        location,
-        socialLinks[]{
-          platform,
-          url
-        }
-      }
+        socialLinks,
+        openingHours,
+        coverImage
+      },
     }
   `;
 
   const data = await client.fetch(query);
+  const siteSettings = data.siteSettings || {}; // Ensure siteSettings is not null
 
-  // Ensure siteSettings is an object, even if null from Sanity
-  const siteSettings = data.siteSettings || {};
-
-  // Map image URLs for client-side components
+  // Helper to map image assets to URLs for any array of items
   const mapImagesToUrls = (items: any[], imageField: string) => {
     return items.map(item => ({
       ...item,

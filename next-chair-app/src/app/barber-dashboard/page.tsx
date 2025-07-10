@@ -8,6 +8,7 @@ import { Metadata } from 'next';
 
 // Define interfaces for data fetched by this server component
 // Re-using interfaces from the manage page for consistency
+// Ensure the 'Service' interface is imported from manage/page.tsx
 import type { Barber, Appointment, Service, Customer } from '@/app/barber-dashboard/manage/page';
 
 export const metadata: Metadata = {
@@ -40,7 +41,7 @@ async function getDailyAppointmentsData(): Promise<{
           endTime
         }
       } | order(name asc),
-      "todayAppointments": *[_type == "appointment" && dateTime >= $startOfDay && dateTime < $endOfDay]{
+      "todayAppointments": *[_type == "appointment" && dateTime < $endOfDay && dateTime >= $startOfDay]{
         _id,
         customer->{_id, name, email},
         barber->{_id, name},

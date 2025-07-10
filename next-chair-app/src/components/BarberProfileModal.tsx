@@ -1,3 +1,4 @@
+// src/components/BarberProfileModal.tsx
 import React from 'react';
 import {
   Modal,
@@ -20,7 +21,8 @@ import {
   Heading,
 } from '@chakra-ui/react';
 import { urlFor } from '@/lib/sanity';
-import { PortableText } from '@portabletext/react';
+import { PortableText, PortableTextComponentProps } from '@portabletext/react';
+import { PortableTextBlock } from '@portabletext/types'; // Import PortableTextBlock
 
 // Define the interface for DailyAvailability matching your Sanity schema
 interface DailyAvailability {
@@ -47,7 +49,7 @@ interface BarberProfileModalProps {
 
 const components = {
   block: {
-    normal: ({ children }: { children: React.ReactNode }) => <Text mb={2}>{children}</Text>,
+    normal: ({ children }: PortableTextComponentProps<PortableTextBlock>) => <Text mb={2}>{children}</Text>, // Corrected type with generic argument
   },
   // You can add custom components for lists, marks, etc., here if your Portable Text contains them
 };

@@ -4,6 +4,14 @@ import { groq } from 'next-sanity';
 import BarbersClient from '@/components/BarbersClient'; // Import the client component we'll create
 import { Metadata } from 'next';
 
+// Define the TypeScript interface for DailyAvailability
+interface DailyAvailability {
+  _key: string; // Add the missing _key property
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+}
+
 // Define the TypeScript interface for a Barber object as fetched from Sanity
 interface Barber {
   _id: string;
@@ -11,11 +19,7 @@ interface Barber {
   slug: { current: string };
   image?: any; // Sanity Image object
   bio?: any; // Sanity Portable Text (can be array of blocks or string)
-  dailyAvailability?: Array<{
-    dayOfWeek: string;
-    startTime: string;
-    endTime: string;
-  }>;
+  dailyAvailability?: DailyAvailability[]; // Use the defined DailyAvailability interface
 }
 
 // Metadata for the /barbers page (server-only export)

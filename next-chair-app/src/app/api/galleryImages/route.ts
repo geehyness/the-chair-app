@@ -13,7 +13,10 @@ async function uploadImageToSanity(imageFile: File | string | null): Promise<str
   if (typeof imageFile === 'string') {
     if (imageFile.startsWith('blob:') || imageFile.startsWith('data:')) {
       try {
-        const uploadedAsset = await writeClient.assets.upload('image', imageFile);
+        // Convert data URL or blob URL string to a Blob
+        const response = await fetch(imageFile);
+        const blob = await response.blob();
+        const uploadedAsset = await writeClient.assets.upload('image', blob); // Pass the Blob
         return uploadedAsset._id;
       } catch (uploadError) {
         console.error("Error uploading image from string/blob:", uploadError);
@@ -126,7 +129,7 @@ export async function GET(req: NextRequest) {
     }
 
     const galleryImages = await client.fetch(query);
-    await logSanityInteraction('fetch', `Fetched gallery image(s) with ID: ${id || 'all'}`, 'galleryImage', id, 'system', true, { query });
+    await logSanityInteraction('fetch', `Fetched gallery image(s) with ID: ${id || 'all'}`, 'galleryImage', id ?? undefined, 'system', true, { query });
 
     return NextResponse.json(galleryImages, { status: 200 });
   } catch (error: any) {
@@ -220,15 +223,16 @@ export async function PUT(req: NextRequest) {
     } else if (typeof error === 'object' && error !== null && 'message' in error) {
       errorMessage = (error as any).message;
     }
-    await logSanityInteraction('error', `Failed to update gallery image: ${errorMessage}`, 'galleryImage', _id, 'admin', false, { errorDetails: errorMessage, payload: 'FormData received' });
+    await logSanityInteraction('error', `Failed to update gallery image: ${errorMessage}`, 'galleryImage', _id ?? undefined, 'admin', false, { errorDetails: errorMessage, payload: 'FormData received' });
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }
 
 export async function DELETE(req: NextRequest) {
+  let id: string | null = null; // Declare id here, outside the try block
   try {
     const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
+    id = searchParams.get('id');
 
     if (!id) {
       return NextResponse.json({ message: 'Gallery Image ID is required for deletion' }, { status: 400 });
@@ -252,7 +256,8 @@ export async function DELETE(req: NextRequest) {
     } else if (typeof error === 'object' && error !== null && 'message' in error) {
       errorMessage = (error as any).message;
     }
-    await logSanityInteraction('error', `Failed to delete gallery image: ${errorMessage}`, 'galleryImage', id, 'admin', false, { errorDetails: errorMessage, payload: 'Gallery Image ID: ' + id });
+    // Now 'id' is accessible here
+    await logSanityInteraction('error', `Failed to delete gallery image: ${errorMessage}`, 'galleryImage', id ?? undefined, 'admin', false, { errorDetails: errorMessage, payload: 'Gallery Image ID: ' + id });
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }

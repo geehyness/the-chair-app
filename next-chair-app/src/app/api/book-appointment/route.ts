@@ -124,7 +124,7 @@ export async function POST(req: NextRequest) {
     } else {
       customerId = customer._id;
       // Update existing customer's phone if provided and different
-      if (customer.phone !== customerPhone) { // Only update if different
+      if (customer && customerId && customer.phone !== customerPhone) { 
         await writeClient
           .patch(customerId)
           .set({ phone: customerPhone })
