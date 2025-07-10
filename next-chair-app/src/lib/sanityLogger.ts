@@ -9,6 +9,8 @@ interface SanityLogDetails {
   query?: string;
   errorDetails?: any;
   durationMs?: number;
+  resultCount?: number; // <--- ADDED THIS LINE
+  createAccountIntent?: boolean; // Added for booking form
 }
 
 /**
@@ -66,8 +68,7 @@ export async function logSanityInteraction(
       userId,
       success,
       details,
-      error: error.message,
-      stack: error.stack,
+      loggingError: error.message, // Add details about the logging error itself
     });
   }
 }

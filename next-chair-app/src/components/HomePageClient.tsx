@@ -70,7 +70,7 @@ export default function HomePageClient({ barbers, services, siteSettings }: Home
   const cardBorderColor = useColorModeValue(theme.colors.neutral.light['border-color'], theme.colors.neutral.dark['border-color']);
 
   // Use coverImageUrl from siteSettings, fallback to default
-  const heroImageSrc = siteSettings.coverImageUrl || 'https://www.blac.media/wp-content/uploads/2022/11/pexels-rodnae-productions-7697394-scaled.jpg';
+  const heroImageSrc = siteSettings.coverImageUrl || '/pexels-rodnae-productions-cut.jpg';
 
   const handleHeroImageLoad = () => {
     setHeroImageLoaded(true);
@@ -108,7 +108,7 @@ export default function HomePageClient({ barbers, services, siteSettings }: Home
       {/* Hero Section */}
       <Box
         position="relative"
-        height="100vh" // Changed to 100vh for full viewport height
+        height="90vh" // Changed to 100vh for full viewport height
         overflow="hidden"
         mb={0} // Removed margin-bottom as content will start directly below
       >
