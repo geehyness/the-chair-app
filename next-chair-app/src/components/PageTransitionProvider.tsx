@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Box, useColorModeValue } from '@chakra-ui/react';
+import { Box, useColorModeValue, Spinner, Text } from '@chakra-ui/react'; // Import Spinner and Text
 import { usePathname } from 'next/navigation';
 
 interface PageTransitionContextType {
@@ -25,6 +25,7 @@ export const usePageTransition = () => {
 export const PageTransitionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const pathname = usePathname();
+  const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Reset transition state when navigating to a new path
   useEffect(() => {
@@ -32,22 +33,36 @@ export const PageTransitionProvider: React.FC<{ children: React.ReactNode }> = (
     // The overlay should be shown if `startTransition` was called.
     // It will be hidden by `signalPageLoaded` from the new page.
     setIsTransitioning(false); // Reset to false on new page render, will be true if startTransition was called
+    if (transitionTimeoutRef.current) {
+        clearTimeout(transitionTimeoutRef.current);
+        transitionTimeoutRef.current = null;
+    }
   }, [pathname]);
 
   const startTransition = useCallback(() => {
-    setIsTransitioning(true); // Overlay becomes visible
-    // No automatic hiding timeout here. Overlay will be hidden by signalPageLoaded.
+    setIsTransitioning(true);
+    // Set a timeout to automatically hide the overlay if signalPageLoaded is not called
+    // This prevents the overlay from getting stuck if a page fails to load or signal
+    transitionTimeoutRef.current = setTimeout(() => {
+        setIsTransitioning(false);
+        console.warn("Page transition timed out. Overlay hidden automatically.");
+    }, 5000); // Hide after 5 seconds (adjust as needed)
   }, []);
 
   const signalPageLoaded = useCallback(() => {
-    // Add a small delay to ensure the new content is fully painted before
-    // the overlay starts fading out, preventing visual glitches.
+    if (transitionTimeoutRef.current) {
+        clearTimeout(transitionTimeoutRef.current);
+        transitionTimeoutRef.current = null;
+    }
+    // Delay hiding the overlay slightly to allow content to render smoothly
+    // and to ensure the `exit` animation has time to run.
     setTimeout(() => {
-      setIsTransitioning(false); // Overlay starts to fade out
+        setIsTransitioning(false);
     }, 200); // Adjust this delay as needed (e.g., 100ms-300ms)
   }, []);
 
   const overlayBgColor = useColorModeValue('white', 'gray.900');
+  const spinnerColor = useColorModeValue('brand.500', 'brand.300'); // Define spinner color
 
   return (
     <PageTransitionContext.Provider value={{ startTransition, signalPageLoaded, isTransitioning }}>
@@ -68,13 +83,23 @@ export const PageTransitionProvider: React.FC<{ children: React.ReactNode }> = (
               backgroundColor: overlayBgColor,
               zIndex: 9999, // Ensure it's on top of everything
               display: 'flex',
+              flexDirection: 'column', // Allow stacking spinner and text
               alignItems: 'center',
               justifyContent: 'center',
               pointerEvents: 'none', // Allows interaction with the underlying page once faded out
             }}
           >
-            {/* You can add a loading spinner or logo here */}
-            <Box>Loading...</Box>
+            {/* Added a Spinner and a more prominent message */}
+            <Spinner
+              size="xl" // Large spinner
+              color={spinnerColor} // Use theme-aware color
+              thickness="4px"
+              speed="0.65s"
+              emptyColor="gray.200"
+            />
+            <Text mt={4} fontSize="xl" fontWeight="bold" color={spinnerColor}>
+              Loading...
+            </Text>
           </motion.div>
         )}
       </AnimatePresence>
