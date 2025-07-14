@@ -1,378 +1,317 @@
 // src/app/theme/theme.ts
 import { extendTheme, type ThemeConfig } from '@chakra-ui/react';
-import { mode } from '@chakra-ui/theme-tools'; // Import mode for color mode dependent styles
+import { mode } from '@chakra-ui/theme-tools';
 
-// 1. Color Mode Configuration
-// You can adjust the initial color mode here
-const config: ThemeConfig = {
-  initialColorMode: 'dark', // 'dark' | 'light' | 'system'
-  useSystemColorMode: false, // Set to true if you want to respect OS theme preference
-};
-
-// 2. Define your core color palette using semantic names
-// THIS IS REVERTED TO ORIGINAL PURPLE BRAND COLORS
+// 1. Define the color palette for a clean, professional barbershop
 const colors = {
-  // Brand Colors (your primary brand identity) - REVERTED TO PURPLE
   brand: {
-    50: '#f0e6ff',
-    100: '#d2baff',
-    200: '#b38eff',
-    300: '#9462ff',
-    400: '#7636ff',
-    500: '#570aff', // Primary purple
-    600: '#4700e6',
-    700: '#3700b3',
-    800: '#270080',
-    900: '#17004d',
+    // A sophisticated deep blue, evoking professionalism and trust
+    50: '#E6F0F7', // Very light blue
+    100: '#C2DCEB',
+    200: '#9EBBDC',
+    300: '#7AA0CC',
+    400: '#5685BD',
+    500: '#326AA0', // Primary brand color - a deep, professional blue
+    600: '#2A5C8E',
+    700: '#224E7C',
+    800: '#1A406A',
+    900: '#123258', // Darkest blue
   },
-  // Accent Color (for highlights, call-to-actions, etc.) - Kept as is
-  accent: {
-    50: '#E6FFFA', // A light teal/cyan
-    100: '#B2F5EA',
-    200: '#81E6D9',
-    300: '#4FD1C5',
-    400: '#38B2AC',
-    500: '#319795', // Primary accent teal
-    600: '#2C7A7B',
-    700: '#285E61',
-    800: '#234E52',
-    900: '#1D4044',
-  },
-  // Neutral Colors (for text, backgrounds, borders) - Kept as is
   neutral: {
-    // Dark mode specific neutrals (lighter shades for dark background)
-    dark: {
-      'bg-primary': 'gray.900',
-      'bg-secondary': 'gray.800',
-      'bg-card': 'gray.700',
-      'bg-input': 'gray.700',
-      'border-color': 'gray.600',
-      'text-primary': 'whiteAlpha.900',
-      'text-secondary': 'gray.300',
-      'text-muted': 'gray.500',
-      'focus-ring': 'brand.300', // A lighter purple for focus on dark mode
-      'bg-header': 'gray.800', // ADDED: Specific header background for dark mode
-    },
-    // Light mode specific neutrals (darker shades for light background)
     light: {
-      'bg-primary': 'gray.50',
-      'bg-secondary': 'gray.100',
-      'bg-card': 'white',
-      'bg-input': 'gray.200',
-      'border-color': 'gray.200',
-      'text-primary': 'gray.900',
-      'text-secondary': 'gray.700',
-      'text-muted': 'gray.500',
-      'focus-ring': 'brand.500', // A darker purple for focus on light mode
-      'bg-header': 'white', // ADDED: Specific header background for light mode
+      'bg-primary': '#F9FAFB', // Very light, almost off-white for main background
+      'bg-secondary': '#FFFFFF', // Crisp white for cards and sections
+      'bg-header': '#FFFFFF',   // Clean white header
+      'bg-card': '#FFFFFF',     // White card background for a clean look
+      'text-primary': '#333333', // **UPDATED: Dark gray for main text**
+      'text-secondary': '#4A5568', // Darker gray for secondary text
+      'border-color': '#E2E8F0', // Subtle light gray for borders
+      'input-bg': '#FFFFFF',    // White input background
+      'input-border': '#CBD5E0', // Light input border
+      'placeholder-color': '#A0AEC0', // Muted placeholder text
+      'tag-bg': '#EDF2F7', // Light gray for tags
+      'tag-color': '#4A5568', // Dark gray for tag text
+      'status-green': '#38A169', // Confirmed
+      'status-orange': '#ED8936', // Pending
+      'status-red': '#E53E3E', // Cancelled
+      'status-purple': '#805AD5', // Completed
     },
-  },
-  // Status Colors (success, error, warning, info) - Kept as is
-  status: {
-    success: 'green.500',
-    error: 'red.500',
-    warning: 'orange.400',
-    info: 'blue.300',
+    dark: {
+      'bg-primary': '#333333', // **UPDATED: Dark gray for main background**
+      'bg-secondary': '#151515', // **UPDATED: Very dark charcoal for sections and secondary elements**
+      'bg-header': '#151515',   // **UPDATED: Dark header**
+      'bg-card': '#151515',     // **UPDATED: Dark card background for depth**
+      'text-primary': '#F7FAFC', // Near-white for main text
+      'text-secondary': '#A0AEC0', // Muted light gray for secondary text
+      'border-color': '#444444', // **UPDATED: Medium-dark gray for borders**
+      'input-bg': '#151515',    // **UPDATED: Dark input background**
+      'input-border': '#444444', // **UPDATED: Darker input border**
+      'placeholder-color': '#888888', // **UPDATED: Medium placeholder for better visibility**
+      'tag-bg': '#222222', // **UPDATED: Slightly lighter dark gray for tags for better contrast**
+      'tag-color': '#F7FAFC', // Near-white for tag text
+      'status-green': '#48BB78', // Confirmed
+      'status-orange': '#F6AD55', // Pending
+      'status-red': '#FC8181', // Cancelled
+      'status-purple': '#B794F4', // Completed
+    },
   },
 };
 
-// 3. Global Styles (applied to `body` and other elements) - Kept as is (brand color for links updated implicitly)
-// Use the `mode` helper for color mode specific styles
+// 2. Configure initial color mode
+const config: ThemeConfig = {
+  initialColorMode: 'dark', // Set initial theme to dark mode
+  useSystemColorMode: false, // Don't use the system's color mode preference
+};
+
+// 3. Define global styles
 const styles = {
   global: (props: Record<string, any>) => ({
     body: {
-      fontFamily: 'body',
-      color: mode(colors.neutral.light['text-primary'], colors.neutral.dark['text-primary'])(props),
       bg: mode(colors.neutral.light['bg-primary'], colors.neutral.dark['bg-primary'])(props),
-      lineHeight: 'base',
+      color: mode(colors.neutral.light['text-primary'], colors.neutral.dark['text-primary'])(props),
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
     },
+    'html, #__next': {
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+    },
+    // Styles for the page transition overlay
+    '.page-transition-overlay': {
+      backgroundColor: mode('white', 'rgba(51, 51, 51, 0.95)')(props), // Adjusted for new dark primary bg
+    },
+    // Wipe rows for transition
+    '.wipe-row': {
+      backgroundColor: mode(colors.brand[500], colors.brand[500])(props), // Use brand color for wipes
+    },
+    '.loading-spinner-container': {
+      backgroundColor: mode(colors.neutral.light['bg-primary'], colors.neutral.dark['bg-primary'])(props),
+      boxShadow: mode('lg', 'dark-lg')(props), // Add subtle shadow
+      borderRadius: 'md',
+      padding: '4',
+    },
+    // General link styling for non-Chakra Link components (e.g., NextLink)
     a: {
-      color: mode(colors.brand[600], colors.brand[300])(props),
+      color: mode(colors.brand[500], colors.brand[300])(props),
       _hover: {
         textDecoration: 'underline',
       },
     },
-    // You can add more global styles here for headings, paragraphs etc.
   }),
 };
 
-// 4. Typography (fonts, font sizes, font weights, line heights) - Kept as is
-const typography = {
-  fonts: {
-    heading: `'Inter', sans-serif`, // Using Inter as per your setup
-    body: `'Inter', sans-serif`,
-  },
-  fontSizes: {
-    xs: '0.75rem',
-    sm: '0.875rem',
-    md: '1rem',
-    lg: '1.125rem',
-    xl: '1.25rem',
-    '2xl': '1.5rem',
-    '3xl': '1.875rem',
-    '4xl': '2.25rem',
-    '5xl': '3rem',
-    '6xl': '3.75rem',
-    '7xl': '4.5rem',
-    '8xl': '6rem',
-    '9xl': '8rem',
-  },
-  fontWeights: {
-    hairline: 100,
-    thin: 200,
-    light: 300,
-    normal: 400,
-    medium: 500,
-    semibold: 600,
-    bold: 700,
-    extrabold: 800,
-    black: 900,
-  },
-  lineHeights: {
-    normal: 'normal',
-    none: '1',
-    shorter: '1.25',
-    short: '1.375',
-    base: '1.5',
-    tall: '1.625',
-    taller: '2',
-  },
-  letterSpacings: {
-    tighter: '-0.05em',
-    tight: '-0.025em',
-    normal: '0',
-    wide: '0.025em',
-    wider: '0.05em',
-    widest: '0.1em',
-  },
-};
-
-// 5. Spacing - Kept as is
-const spacing = {
-  space: {
-    px: '1px',
-    0.5: '0.125rem',
-    1: '0.25rem',
-    // ... continue up to 10 or 20 for consistent spacing
-    2: '0.5rem',
-    3: '0.75rem',
-    4: '1rem',
-    5: '1.25rem',
-    6: '1.5rem',
-    8: '2rem',
-    10: '2.5rem',
-    12: '3rem',
-    16: '4rem',
-    20: '5rem',
-    24: '6rem',
-    32: '8rem',
-    40: '10rem',
-    48: '12rem',
-    56: '14rem',
-    64: '16rem',
-    // You can add more specific spacing like `md`, `lg`
-    'layout-padding-x': '1.5rem',
-    'layout-padding-y': '2rem',
-  },
-};
-
-// 6. Breakpoints (for responsive design) - Kept as is
-const breakpoints = {
-  sm: '30em', // 480px
-  md: '48em', // 768px
-  lg: '62em', // 992px
-  xl: '80em', // 1280px
-  '2xl': '96em', // 1536px
-};
-
-// 7. Component-specific styles (e.g., Button, Input, Card) - UPDATED Button here
+// 4. Component overrides for a beautiful, professional look
 const components = {
   Button: {
-    baseStyle: {
-      fontWeight: 'bold',
-      borderRadius: 'md', // Changed from 'full' to 'md' for a slightly less rounded look
-      _focus: (props: Record<string, any>) => ({ // Use mode for focus ring as well
-        boxShadow: `0 0 0 3px ${mode(colors.brand[300], colors.brand[500])(props)}`, // Use a lighter purple for dark mode, original purple for light mode
-      }),
-    },
+    baseStyle: (props: Record<string, any>) => ({
+      fontWeight: 'semibold', // Slightly bolder for professionalism
+      borderRadius: 'lg', // More rounded for a softer, modern feel
+      _focus: {
+        boxShadow: 'outline',
+      },
+      _active: {
+        transform: 'scale(0.98)',
+      },
+      transition: 'all 0.2s ease-in-out', // Smooth transitions
+    }),
     variants: {
       solid: (props: Record<string, any>) => ({
-        bg: '#FFFFFF', // Explicitly set background to white
-        color: 'gray.800', // Set text color to dark gray for contrast
+        bg: props.colorScheme === 'brand' ? mode(colors.brand[500], colors.brand[500])(props) : undefined,
+        color: props.colorScheme === 'brand' ? 'white' : undefined,
         _hover: {
-          bg: '#F0F0F0', // Slightly off-white for hover effect
+          bg: props.colorScheme === 'brand' ? mode(colors.brand[600], colors.brand[600])(props) : undefined,
+          boxShadow: 'md', // Subtle lift on hover
           _disabled: {
-            bg: mode('gray.300', 'gray.600')(props), // Ensure disabled state is clear
+            bg: mode('gray.200', 'whiteAlpha.300')(props),
           },
         },
         _active: {
-          bg: '#E0E0E0', // Even more off-white for active state
+          bg: props.colorScheme === 'brand' ? mode(colors.brand[700], colors.brand[700])(props) : undefined,
         },
       }),
-      // Other variants (outline, ghost, accent) will still use the original 'brand' colors
       outline: (props: Record<string, any>) => ({
-        borderColor: mode(colors.brand[500], colors.brand[400])(props),
-        color: mode(colors.brand[500], colors.brand[300])(props),
+        borderColor: props.colorScheme === 'brand' ? mode(colors.brand[500], colors.brand[400])(props) : mode(colors.neutral.light['border-color'], colors.neutral.dark['border-color'])(props),
+        color: props.colorScheme === 'brand' ? mode(colors.brand[500], colors.brand[400])(props) : mode(colors.neutral.light['text-primary'], colors.neutral.dark['text-primary'])(props),
         _hover: {
-          bg: mode(colors.brand[50], colors.neutral.dark['bg-secondary'])(props),
+          bg: props.colorScheme === 'brand' ? mode(colors.brand[50], colors.brand[900])(props) : mode(colors.neutral.light['bg-secondary'], colors.neutral.dark['bg-secondary'])(props),
+          borderColor: props.colorScheme === 'brand' ? mode(colors.brand[600], colors.brand[500])(props) : undefined,
+          boxShadow: 'sm', // Subtle lift on hover
         },
       }),
       ghost: (props: Record<string, any>) => ({
-        color: mode(colors.brand[600], colors.brand[300])(props),
+        color: mode(colors.neutral.light['text-secondary'], colors.neutral.dark['text-secondary'])(props),
         _hover: {
-          bg: mode(colors.brand[50], colors.neutral.dark['bg-secondary'])(props),
-        },
-      }),
-      accent: (props: Record<string, any>) => ({
-        bg: mode(colors.accent[500], colors.accent[400])(props),
-        color: 'white',
-        _hover: {
-          bg: mode(colors.accent[600], colors.accent[500])(props),
+          bg: mode(colors.neutral.light['tag-bg'], colors.neutral.dark['tag-bg'])(props),
+          color: mode(colors.neutral.light['text-primary'], colors.neutral.dark['text-primary'])(props),
         },
       }),
     },
-    defaultProps: {
-      size: 'md',
-      variant: 'solid',
-    },
+  },
+  Card: {
+    baseStyle: (props: Record<string, any>) => ({
+      container: {
+        bg: mode(colors.neutral.light['bg-card'], colors.neutral.dark['bg-card'])(props),
+        borderRadius: 'xl', // More pronounced rounded corners for elegance
+        boxShadow: mode('md', 'dark-md')(props), // Slightly stronger shadow for definition
+        borderColor: mode(colors.neutral.light['border-color'], colors.neutral.dark['border-color'])(props),
+        borderWidth: '1px',
+        transition: 'all 0.2s ease-in-out', // Smooth transitions for hover effects if any
+      },
+    }),
+  },
+  Link: {
+    baseStyle: (props: Record<string, any>) => ({
+      color: mode(colors.brand[500], colors.brand[300])(props),
+      _hover: {
+        textDecoration: 'underline',
+        color: mode(colors.brand[600], colors.brand[400])(props),
+      },
+    }),
   },
   Input: {
     variants: {
       outline: (props: Record<string, any>) => ({
         field: {
-          bg: mode(colors.neutral.light['bg-input'], colors.neutral.dark['bg-input'])(props),
-          borderColor: mode(colors.neutral.light['border-color'], colors.neutral.dark['border-color'])(props),
+          bg: mode(colors.neutral.light['input-bg'], colors.neutral.dark['input-bg'])(props),
+          borderColor: mode(colors.neutral.light['input-border'], colors.neutral.dark['input-border'])(props),
           _hover: {
-            borderColor: mode(colors.brand[400], colors.brand[300])(props),
+            borderColor: mode(colors.brand[300], colors.brand[400])(props),
           },
-          _focus: {
+          _focusVisible: {
             borderColor: mode(colors.brand[500], colors.brand[300])(props),
             boxShadow: `0 0 0 1px ${mode(colors.brand[500], colors.brand[300])(props)}`,
           },
-          color: mode(colors.neutral.light['text-primary'], colors.neutral.dark['text-primary'])(props),
+          _placeholder: {
+            color: mode(colors.neutral.light['placeholder-color'], colors.neutral.dark['placeholder-color'])(props),
+          },
         },
       }),
-    },
-    defaultProps: {
-      variant: 'outline',
     },
   },
   Textarea: {
     variants: {
       outline: (props: Record<string, any>) => ({
-        bg: mode(colors.neutral.light['bg-input'], colors.neutral.dark['bg-input'])(props),
-        borderColor: mode(colors.neutral.light['border-color'], colors.neutral.dark['border-color'])(props),
+        bg: mode(colors.neutral.light['input-bg'], colors.neutral.dark['input-bg'])(props),
+        borderColor: mode(colors.neutral.light['input-border'], colors.neutral.dark['input-border'])(props),
         _hover: {
-          borderColor: mode(colors.brand[400], colors.brand[300])(props),
+          borderColor: mode(colors.brand[300], colors.brand[400])(props),
         },
-        _focus: {
+        _focusVisible: {
           borderColor: mode(colors.brand[500], colors.brand[300])(props),
           boxShadow: `0 0 0 1px ${mode(colors.brand[500], colors.brand[300])(props)}`,
         },
-        color: mode(colors.neutral.light['text-primary'], colors.neutral.dark['text-primary'])(props),
+        _placeholder: {
+          color: mode(colors.neutral.light['placeholder-color'], colors.neutral.dark['placeholder-color'])(props),
+        },
       }),
-    },
-    defaultProps: {
-      variant: 'outline',
     },
   },
   Select: {
     variants: {
       outline: (props: Record<string, any>) => ({
         field: {
-          bg: mode(colors.neutral.light['bg-input'], colors.neutral.dark['bg-input'])(props),
-          borderColor: mode(colors.neutral.light['border-color'], colors.neutral.dark['border-color'])(props),
+          bg: mode(colors.neutral.light['input-bg'], colors.neutral.dark['input-bg'])(props),
+          borderColor: mode(colors.neutral.light['input-border'], colors.neutral.dark['input-border'])(props),
           _hover: {
-            borderColor: mode(colors.brand[400], colors.brand[300])(props),
+            borderColor: mode(colors.brand[300], colors.brand[400])(props),
           },
-          _focus: {
+          _focusVisible: {
             borderColor: mode(colors.brand[500], colors.brand[300])(props),
             boxShadow: `0 0 0 1px ${mode(colors.brand[500], colors.brand[300])(props)}`,
           },
-          color: mode(colors.neutral.light['text-primary'], colors.neutral.dark['text-primary'])(props),
+          _placeholder: {
+            color: mode(colors.neutral.light['placeholder-color'], colors.neutral.dark['placeholder-color'])(props),
+          },
         },
-        icon: {
-            color: mode(colors.neutral.light['text-secondary'], colors.neutral.dark['text-secondary'])(props),
-        }
       }),
     },
-    defaultProps: {
-      variant: 'outline',
-    },
   },
-  Link: {
-    baseStyle: (props: Record<string, any>) => ({
-      color: mode(colors.brand[600], colors.brand[300])(props),
-      _hover: {
-        textDecoration: 'none', // Chakra UI defaults to underline, remove for clean hover
-        color: mode(colors.brand[700], colors.brand[200])(props),
-      },
-    }),
-  },
-  Container: {
-    baseStyle: {
-      maxWidth: 'container.xl', // Ensures consistent maximum width for content
-      paddingX: { base: 'layout-padding-x', md: 'layout-padding-x-md' }, // Custom padding
-      paddingY: { base: 'layout-padding-y', md: 'layout-padding-y-md' },
-    },
-  },
-  // Add more components as needed (e.g., Card, Modal, Table, etc.)
-  Card: {
+  Tag: {
     baseStyle: (props: Record<string, any>) => ({
       container: {
-        bg: mode(colors.neutral.light['bg-card'], colors.neutral.dark['bg-card'])(props),
-        borderRadius: 'lg',
-        boxShadow: mode('sm', 'dark-lg')(props), // Adjust shadow for dark mode
+        bg: mode(colors.neutral.light['tag-bg'], colors.neutral.dark['tag-bg'])(props),
+        color: mode(colors.neutral.light['tag-color'], colors.neutral.dark['tag-color'])(props),
+        borderRadius: 'md', // Consistent rounding
       },
-      header: {
-        color: mode(colors.neutral.light['text-primary'], colors.neutral.dark['text-primary'])(props),
-      },
-      body: {
-        color: mode(colors.neutral.light['text-secondary'], colors.neutral.dark['text-secondary'])(props),
-      }
-    })
+    }),
+    // Add color schemes for status tags (green, orange, red, purple)
+    variants: {
+        subtle: (props: Record<string, any>) => {
+            let bgColor = '';
+            let textColor = '';
+            if (props.colorScheme === 'green') {
+                bgColor = mode(colors.neutral.light['status-green'], colors.neutral.dark['status-green'])(props);
+                textColor = mode('white', 'white')(props);
+            } else if (props.colorScheme === 'orange') {
+                bgColor = mode(colors.neutral.light['status-orange'], colors.neutral.dark['status-orange'])(props);
+                textColor = mode('white', 'white')(props);
+            } else if (props.colorScheme === 'red') {
+                bgColor = mode(colors.neutral.light['status-red'], colors.neutral.dark['status-red'])(props);
+                textColor = mode('white', 'white')(props);
+            } else if (props.colorScheme === 'purple') {
+                bgColor = mode(colors.neutral.light['status-purple'], colors.neutral.dark['status-purple'])(props);
+                textColor = mode('white', 'white')(props);
+            } else { // Default to gray
+                bgColor = mode('gray.100', 'whiteAlpha.300')(props);
+                textColor = mode('gray.800', 'whiteAlpha.800')(props);
+            }
+            return {
+                container: {
+                    bg: bgColor,
+                    color: textColor,
+                },
+            };
+        },
+    },
   },
+  // Add Table styling for a cleaner look
   Table: {
     baseStyle: (props: Record<string, any>) => ({
       th: {
         color: mode(colors.neutral.light['text-primary'], colors.neutral.dark['text-primary'])(props),
         borderColor: mode(colors.neutral.light['border-color'], colors.neutral.dark['border-color'])(props),
+        fontWeight: 'bold',
+        textTransform: 'capitalize', // Keep first letter capitalized, not all caps
       },
       td: {
-        color: mode(colors.neutral.light['text-secondary'], colors.neutral.dark['text-secondary'])(props),
+        color: mode(colors.neutral.light['text-primary'], colors.neutral.dark['text-primary'])(props),
         borderColor: mode(colors.neutral.light['border-color'], colors.neutral.dark['border-color'])(props),
       },
-      // Override default striped variant if needed
-      variants: {
-        simple: {
-          th: {
-            borderBottomWidth: '1px',
-            borderBottomColor: mode(colors.neutral.light['border-color'], colors.neutral.dark['border-color'])(props),
-          },
-          td: {
-            borderBottomWidth: '1px',
-            borderBottomColor: mode(colors.neutral.light['border-color'], colors.neutral.dark['border-color'])(props),
-          },
-        },
+      // Ensure Table component uses the card background for its container
+      container: {
+        bg: mode(colors.neutral.light['bg-card'], colors.neutral.dark['bg-card'])(props),
+        borderRadius: 'lg',
+        boxShadow: mode('md', 'dark-md')(props),
+        border: '1px solid',
+        borderColor: mode(colors.neutral.light['border-color'], colors.neutral.dark['border-color'])(props),
       },
     }),
   },
 };
 
-
-// Combine all parts into the theme
+// 5. Extend the theme
 const theme = extendTheme({
   config,
   colors,
-  ...typography, // Spread typography properties directly
-  ...spacing,   // Spread spacing properties directly
-  breakpoints,
   styles,
   components,
-  // Add other theme properties as needed (e.g., z-indices, shadows)
   shadows: {
-    outline: `0 0 0 3px ${colors.brand[300]}`, // Custom focus outline - uses brand.300 (lighter purple)
-    'dark-lg': 'rgba(0, 0, 0, 0.4) 0px 10px 15px -3px, rgba(0, 0, 0, 0.2) 0px 4px 6px -2px',
+    // Custom subtle shadows for elegance and professionalism
+    sm: '0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03)',
+    md: '0 4px 6px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05)',
+    lg: '0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05)',
+    xl: '0 20px 25px rgba(0,0,0,0.1), 0 10px 10px rgba(0,0,0,0.04)',
+    'dark-sm': '0 1px 3px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.12)',
+    'dark-md': '0 4px 6px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2)',
+    'dark-lg': '0 10px 15px rgba(0,0,0,0.4), 0 4px 6px rgba(0,0,0,0.25)',
+    'dark-xl': '0 20px 25px rgba(0,0,0,0.5), 0 10px 10px rgba(0,0,0,0.3)',
+    outline: '0 0 0 3px rgba(50, 106, 160, 0.6)', // Brand blue outline
+  },
+  fonts: {
+    heading: `'Inter', sans-serif`,
+    body: `'Inter', sans-serif`,
   },
 });
 
