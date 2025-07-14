@@ -160,13 +160,13 @@ export default function ServicesClient({ services, categories }: ServicesClientP
                   </VStack>
                   <Button
                     as={NextLink}
-                    href={`/book-service/${service.slug?.current}`}
+                    href={`/book/${service.slug?.current}`}
                     size="md"
                     colorScheme="brand"
                     onClick={(e) => {
                       e.preventDefault();
                       startTransition();
-                      setTimeout(() => router.push(`/book-service/${service.slug?.current}`), 400);
+                      setTimeout(() => router.push(`/book/${service.slug?.current}`), 400);
                     }}
                   >
                     Book Now
