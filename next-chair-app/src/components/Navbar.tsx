@@ -41,7 +41,7 @@ export function Navbar({ type, appName = 'The Chair App', onDashboardLogout }: N
   const dashboardLinks = [
     { label: 'Today\'s Appointments', href: '/barber-dashboard' }, // New link for daily overview
     { label: 'Manage Data', href: '/barber-dashboard/manage' }, // Link to the full management dashboard
-    { label: 'Reports', href: '/admin-reports' }, // Existing reports link
+    { label: 'Reports', href: '/barber-dashboard/admin-reports' }, // Existing reports link
     // You can add other specific dashboard links here if needed
   ];
 

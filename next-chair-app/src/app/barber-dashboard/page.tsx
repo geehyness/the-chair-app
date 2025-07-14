@@ -19,8 +19,9 @@ export const metadata: Metadata = {
 // Function to fetch all barbers and today's appointments
 async function getDailyAppointmentsData(): Promise<{
   barbers: Barber[];
+  services: Service[]; // NEW: Add services to the return type
   todayAppointments: Appointment[];
-  upcomingAppointments: Appointment[]; // NEW: Add upcoming appointments
+  upcomingAppointments: Appointment[];
 }> {
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Start of today
@@ -41,6 +42,11 @@ async function getDailyAppointmentsData(): Promise<{
           endTime
         }
       } | order(name asc),
+      "services": *[_type == "service"]{ // NEW: Fetch all services
+        _id,
+        name,
+        price
+      } | order(name asc),
       "todayAppointments": *[_type == "appointment" && dateTime < $endOfDay && dateTime >= $startOfDay]{
         _id,
         customer->{_id, name, email},
@@ -50,7 +56,7 @@ async function getDailyAppointmentsData(): Promise<{
         status,
         notes
       } | order(dateTime asc),
-      "upcomingAppointments": *[_type == "appointment" && dateTime >= $endOfDay]{ // NEW: Appointments from tomorrow onwards
+      "upcomingAppointments": *[_type == "appointment" && dateTime >= $endOfDay]{
         _id,
         customer->{_id, name, email},
         barber->{_id, name},
@@ -58,7 +64,7 @@ async function getDailyAppointmentsData(): Promise<{
         dateTime,
         status,
         notes
-      } | order(dateTime asc) // Order upcoming appointments by date/time
+      } | order(dateTime asc)
     }
   `;
 
@@ -75,19 +81,21 @@ async function getDailyAppointmentsData(): Promise<{
 
   return {
     barbers: processedBarbers || [],
+    services: data.services || [], // NEW: Return services
     todayAppointments: data.todayAppointments || [],
-    upcomingAppointments: data.upcomingAppointments || [], // Return upcoming appointments
+    upcomingAppointments: data.upcomingAppointments || [],
   };
 }
 
 export default async function BarberDashboardAppointmentsPage() {
-  const { barbers, todayAppointments, upcomingAppointments } = await getDailyAppointmentsData(); // Destructure upcomingAppointments
+  const { barbers, services, todayAppointments, upcomingAppointments } = await getDailyAppointmentsData(); // NEW: Destructure services
 
   return (
     <BarberDailyAppointmentsClient
       barbers={barbers}
+      services={services} // NEW: Pass services to client component
       todayAppointments={todayAppointments}
-      upcomingAppointments={upcomingAppointments} // Pass upcomingAppointments to client component
+      upcomingAppointments={upcomingAppointments}
     />
   );
 }

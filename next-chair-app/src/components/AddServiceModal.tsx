@@ -24,6 +24,9 @@ import {
   Spinner,
   Image,
   Flex,
+  CheckboxGroup, // Import CheckboxGroup for multiple checkbox selection
+  Checkbox,      // Import Checkbox for individual checkboxes
+  Stack,         // Import Stack for layout of checkboxes
 } from '@chakra-ui/react';
 import { client, urlFor, writeClient } from '@/lib/sanity'; // Ensure your Sanity client is imported
 import { groq } from 'next-sanity';
@@ -142,6 +145,11 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({
       setImageFile(null);
       setPreviewImageUrl(undefined);
     }
+  };
+
+  // New handler for checkbox group change
+  const handleBarberChange = (value: string[]) => {
+    setSelectedBarbers(value);
   };
 
   const handleSubmit = async () => {
@@ -307,26 +315,18 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({
                 </Select>
               </FormControl>
 
+              {/* Replaced Select with CheckboxGroup for barbers */}
               <FormControl id="barbers">
                 <FormLabel color={labelColor}>Available Barbers</FormLabel>
-                <Select
-                  placeholder="Select barbers"
-                  multiple
-                  value={selectedBarbers}
-                  onChange={(e) =>
-                    setSelectedBarbers(
-                      Array.from(e.target.selectedOptions, (option) => option.value)
-                    )
-                  }
-                  bg={inputBg}
-                  borderColor={borderColor}
-                >
-                  {barbers.map((barber) => (
-                    <option key={barber._id} value={barber._id}>
-                      {barber.name}
-                    </option>
-                  ))}
-                </Select>
+                <CheckboxGroup value={selectedBarbers} onChange={handleBarberChange}>
+                  <Stack spacing={2} direction="column"> {/* Stack for vertical arrangement of checkboxes */}
+                    {barbers.map((barber) => (
+                      <Checkbox key={barber._id} value={barber._id}>
+                        {barber.name}
+                      </Checkbox>
+                    ))}
+                  </Stack>
+                </CheckboxGroup>
               </FormControl>
 
               <FormControl id="image">
