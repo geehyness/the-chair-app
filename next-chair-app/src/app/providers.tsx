@@ -18,7 +18,6 @@ interface ProvidersProps {
 
 export function Providers({ children }: ProvidersProps) {
   return (
-    // THIS IS THE CRITICAL CHANGE: Use 'theme={themes}' instead of 'value={themes}'
     <ChakraProvider theme={themes}>
       <ThemeProvider
         attribute="class"

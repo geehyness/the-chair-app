@@ -3,8 +3,9 @@
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Box, useColorModeValue, Spinner, Text } from '@chakra-ui/react'; // Import Spinner and Text
+import { Box, useColorModeValue, Spinner, Text, useTheme } from '@chakra-ui/react';
 import { usePathname } from 'next/navigation';
+
 
 interface PageTransitionContextType {
   startTransition: () => void;
@@ -26,13 +27,19 @@ export const PageTransitionProvider: React.FC<{ children: React.ReactNode }> = (
   const [isTransitioning, setIsTransitioning] = useState(false);
   const pathname = usePathname();
   const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const theme = useTheme(); // Access the theme
+
+  // Define color mode values unconditionally at the top level
+  const overlayBgColor = useColorModeValue(theme.colors.neutral.light['bg-primary'], theme.colors.neutral.dark['bg-primary']);
+  const spinnerColor = useColorModeValue(theme.colors.brand['500'], theme.colors.brand['300']);
+  const textColor = useColorModeValue(theme.colors.neutral.light['text-primary'], theme.colors.neutral.dark['text-primary']);
+  // FIX: Move this useColorModeValue call outside the conditional render block
+  const spinnerEmptyColor = useColorModeValue('gray.200', 'gray.700');
+
 
   // Reset transition state when navigating to a new path
   useEffect(() => {
-    // When pathname changes, we consider a new page load initiated.
-    // The overlay should be shown if `startTransition` was called.
-    // It will be hidden by `signalPageLoaded` from the new page.
-    setIsTransitioning(false); // Reset to false on new page render, will be true if startTransition was called
+    setIsTransitioning(false);
     if (transitionTimeoutRef.current) {
         clearTimeout(transitionTimeoutRef.current);
         transitionTimeoutRef.current = null;
@@ -42,11 +49,10 @@ export const PageTransitionProvider: React.FC<{ children: React.ReactNode }> = (
   const startTransition = useCallback(() => {
     setIsTransitioning(true);
     // Set a timeout to automatically hide the overlay if signalPageLoaded is not called
-    // This prevents the overlay from getting stuck if a page fails to load or signal
     transitionTimeoutRef.current = setTimeout(() => {
         setIsTransitioning(false);
         console.warn("Page transition timed out. Overlay hidden automatically.");
-    }, 5000); // Hide after 5 seconds (adjust as needed)
+    }, 5000); // Hide after 5 seconds
   }, []);
 
   const signalPageLoaded = useCallback(() => {
@@ -55,49 +61,46 @@ export const PageTransitionProvider: React.FC<{ children: React.ReactNode }> = (
         transitionTimeoutRef.current = null;
     }
     // Delay hiding the overlay slightly to allow content to render smoothly
-    // and to ensure the `exit` animation has time to run.
     setTimeout(() => {
         setIsTransitioning(false);
-    }, 200); // Adjust this delay as needed (e.g., 100ms-300ms)
+    }, 200); // Adjust this delay as needed
   }, []);
 
-  const overlayBgColor = useColorModeValue('white', 'gray.900');
-  const spinnerColor = useColorModeValue('brand.500', 'brand.300'); // Define spinner color
 
   return (
     <PageTransitionContext.Provider value={{ startTransition, signalPageLoaded, isTransitioning }}>
       <AnimatePresence mode="wait">
-        {isTransitioning && ( // Overlay is visible if a transition is active
+        {isTransitioning && (
           <motion.div
             key="page-transition-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }} // This exit runs when `isTransitioning` becomes false (after signalPageLoaded)
-            transition={{ duration: 0.4 }} // Duration of the fade in/out animation
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
             style={{
               position: 'fixed',
               top: 0,
               left: 0,
               width: '100vw',
               height: '100vh',
-              backgroundColor: overlayBgColor,
-              zIndex: 9999, // Ensure it's on top of everything
+              backgroundColor: overlayBgColor, // Use theme-aware background
+              zIndex: 9999,
               display: 'flex',
-              flexDirection: 'column', // Allow stacking spinner and text
+              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
               pointerEvents: 'none', // Allows interaction with the underlying page once faded out
             }}
           >
-            {/* Added a Spinner and a more prominent message */}
+            {/* Spinner and message directly within the motion.div */}
             <Spinner
-              size="xl" // Large spinner
-              color={spinnerColor} // Use theme-aware color
+              size="xl"
+              color={spinnerColor}
               thickness="4px"
               speed="0.65s"
-              emptyColor="gray.200"
+              emptyColor={spinnerEmptyColor} // Use the unconditionally defined variable
             />
-            <Text mt={4} fontSize="xl" fontWeight="bold" color={spinnerColor}>
+            <Text mt={4} fontSize="xl" fontWeight="bold" color={textColor}>
               Loading...
             </Text>
           </motion.div>
