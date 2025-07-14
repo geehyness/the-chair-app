@@ -23,7 +23,7 @@ const colors = {
       'bg-secondary': '#FFFFFF', // Crisp white for cards and sections
       'bg-header': '#FFFFFF',   // Clean white header
       'bg-card': '#FFFFFF',     // White card background for a clean look
-      'text-primary': '#333333', // **UPDATED: Dark gray for main text**
+      'text-primary': '#222222', // **UPDATED: Dark gray for main text**
       'text-secondary': '#4A5568', // Darker gray for secondary text
       'border-color': '#E2E8F0', // Subtle light gray for borders
       'input-bg': '#FFFFFF',    // White input background
@@ -37,8 +37,8 @@ const colors = {
       'status-purple': '#805AD5', // Completed
     },
     dark: {
-      'bg-primary': '#333333', // **UPDATED: Dark gray for main background**
-      'bg-secondary': '#151515', // **UPDATED: Very dark charcoal for sections and secondary elements**
+      'bg-primary': '#222222', // **UPDATED: Dark gray for main background**
+      'bg-secondary': '#121212', // **UPDATED: Very dark charcoal for sections and secondary elements**
       'bg-header': '#151515',   // **UPDATED: Dark header**
       'bg-card': '#151515',     // **UPDATED: Dark card background for depth**
       'text-primary': '#F7FAFC', // Near-white for main text
@@ -47,7 +47,7 @@ const colors = {
       'input-bg': '#151515',    // **UPDATED: Dark input background**
       'input-border': '#444444', // **UPDATED: Darker input border**
       'placeholder-color': '#888888', // **UPDATED: Medium placeholder for better visibility**
-      'tag-bg': '#222222', // **UPDATED: Slightly lighter dark gray for tags for better contrast**
+      'tag-bg': '#151515', // **UPDATED: Slightly lighter dark gray for tags for better contrast**
       'tag-color': '#F7FAFC', // Near-white for tag text
       'status-green': '#48BB78', // Confirmed
       'status-orange': '#F6AD55', // Pending
