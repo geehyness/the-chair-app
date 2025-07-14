@@ -10,7 +10,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
   title: 'The Chair App',
-  description: 'Salon booking made easy',
+  description: 'Salon booking made easy!',
 };
 
 // Define TypeScript interfaces for data fetched by this server component
