@@ -152,7 +152,7 @@ export default function ServicesClient({ services, categories }: ServicesClientP
                 <Flex justify="space-between" align="center" mt={4}>
                   <VStack align="flex-start" spacing={0}>
                     <Text fontSize="lg" fontWeight="bold" color={theme.colors.brand['500']}>
-                      ${service.price.toFixed(2)}
+                      E{service.price.toFixed(2)}
                     </Text>
                     <Text fontSize="sm" color={textColorSecondary}>
                       Duration: {service.duration} mins

@@ -231,7 +231,7 @@ export default function HomePageClient({ barbers, services, siteSettings }: Home
                   <Flex justify="space-between" align="center" mt={4}>
                     <VStack align="flex-start" spacing={0}>
                       <Text fontSize="lg" fontWeight="bold" color={theme.colors.brand['500']}>
-                        ${service.price.toFixed(2)}
+                        E{service.price.toFixed(2)}
                       </Text>
                       {/* Service Duration */}
                       <Text fontSize="sm" color={textColorSecondary}>

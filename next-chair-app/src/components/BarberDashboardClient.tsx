@@ -591,7 +591,7 @@ export default function BarberDashboardClient({
                           </Td>
                           <Td color={textColorSecondary}>{service.name}</Td>
                           <Td color={textColorSecondary}>{service.description?.substring(0, 50)}...</Td>
-                          <Td color={textColorSecondary}>${service.price?.toFixed(2)}</Td>
+                          <Td color={textColorSecondary}>E{service.price?.toFixed(2)}</Td>
                           <Td color={textColorSecondary}>{service.duration}</Td>
                           <Td color={textColorSecondary}>{service.category?.title || 'N/A'}</Td>
                           <Td>

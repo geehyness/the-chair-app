@@ -341,7 +341,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
             <option value="">-- Select Service --</option>
             {services.map((service) => (
               <option key={service._id} value={service._id}>
-                {service.name} (${service.price.toFixed(2)}) - {service.duration} mins
+                {service.name} (E{service.price.toFixed(2)}) - {service.duration} mins
               </option>
             ))}
           </Select>
