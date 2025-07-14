@@ -240,13 +240,13 @@ export default function HomePageClient({ barbers, services, siteSettings }: Home
                     </VStack>
                     <Button
                       as={NextLink} // Use NextLink directly as the 'as' prop
-                      href={`/book/${service.slug?.current}`}
+                      href={`/book`}
                       size="md"
                       colorScheme="brand"
                       onClick={(e) => {
                         e.preventDefault();
                         startTransition();
-                        setTimeout(() => router.push(`/book/${service.slug?.current}`), 400); // Direct navigation
+                        setTimeout(() => router.push(`/book`), 400); // Direct navigation
                       }}
                     >
                       Book Now
