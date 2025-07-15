@@ -604,7 +604,7 @@ export default function BarberDailyAppointmentsClient({
                                 Notes: {appt.notes}
                               </Text>
                             )}
-                            <HStack mt={3} justifyContent="flex-end">
+                            <VStack mt={2} alignSelf="flex-end">
                               <Button
                                 size="sm"
                                 colorScheme="brand"
@@ -646,7 +646,7 @@ export default function BarberDailyAppointmentsClient({
                                   Cancel
                                 </Button>
                               )}
-                            </HStack>
+                            </VStack>
                           </Box>
                         ))
                       ) : (
@@ -708,7 +708,7 @@ export default function BarberDailyAppointmentsClient({
                                       <Text fontSize="sm" color={textColorSecondary}>
                                         {appt.service.name} for {appt.customer.name}
                                       </Text>
-                                      <HStack mt={2} justifyContent="flex-end">
+                                      <VStack mt={2} alignSelf="flex-end">
                                         <Button
                                           size="xs"
                                           colorScheme="brand"
@@ -750,7 +750,7 @@ export default function BarberDailyAppointmentsClient({
                                             Cancel
                                           </Button>
                                         )}
-                                      </HStack>
+                                      </VStack>
                                     </Box>
                                   ))
                                 ) : (
