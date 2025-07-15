@@ -303,10 +303,11 @@ export default function HomePageClient({ barbers, services, siteSettings }: Home
                     <Heading as="h3" size="md" mb={2} textAlign="center" color={textColorPrimary}>
                       {barber.name}
                     </Heading>
+                                        
                     <Text fontSize="md" color={textColorSecondary} textAlign="center" noOfLines={4} mb={3}> {/* Increased lines for bio */}
-                      {barber.bio && Array.isArray(barber.bio) && barber.bio.length > 0 && barber.bio[0].children && barber.bio[0].children.length > 0
-                        ? barber.bio[0].children[0].text
-                        : 'No bio available.'}
+                      {typeof barber.bio === 'string'
+                        ? barber.bio.substring(0, 50) + (barber.bio.length > 50 ? '...' : '')
+                        : 'No bio.'}
                     </Text>
 
                     {/* Display Available Days */}

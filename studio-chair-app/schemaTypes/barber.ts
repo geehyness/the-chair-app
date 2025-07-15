@@ -36,17 +36,8 @@ export default defineType({
     defineField({
       name: 'bio',
       title: 'Bio',
-      type: 'array',
-      of: [
-        {
-          type: 'block',
-          styles: [{title: 'Normal', value: 'normal'}],
-          lists: [],
-          marks: {
-            decorators: [{title: 'Strong', value: 'strong'}, {title: 'Emphasis', value: 'em'}],
-          },
-        },
-      ],
+      type: 'text', // Changed from 'array' to 'text'
+      rows: 5, // Added rows for better textarea display in Sanity Studio
       description: 'A short description or biography of the barber.',
     }),
     defineField({

@@ -37,7 +37,7 @@ interface Barber {
   name: string;
   slug: { current: string };
   image?: any;
-  bio?: any; // Portable Text (array of blocks)
+  bio?: string; // Changed to string
   dailyAvailability?: DailyAvailability[]; // Add dailyAvailability
 }
 
@@ -108,7 +108,8 @@ export default function BarberProfileModal({ isOpen, onClose, barber }: BarberPr
               {barber.bio && (
                 <Box mt={4} color={textColorSecondary} textAlign="center">
                   <Heading as="h4" size="md" mb={2} color={textColorPrimary}>About {barber.name}</Heading>
-                  <PortableText value={barber.bio} components={components} />
+                  <Text color={textColorSecondary}>{barber.bio}</Text>
+
                 </Box>
               )}
 

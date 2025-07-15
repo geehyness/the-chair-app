@@ -1,5 +1,5 @@
 // src/components/BarberDailyAppointmentsClient.tsx
-'use client';
+'use client'; // This must be the very first line in the file
 
 import React, { useState, useMemo, useEffect } from 'react';
 import {
@@ -33,6 +33,15 @@ import {
   Tab,
   TabPanel,
   Select,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  Input,
+  FormControl,
+  FormLabel,
 } from '@chakra-ui/react';
 import NextLink from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -50,7 +59,10 @@ import {
   eachWeekOfInterval,
   eachMonthOfInterval,
   eachYearOfInterval,
-  // isWithinInterval, // Not directly used in current analytics logic but useful for general date filtering
+  isWithinInterval,
+  isValid, // Import isValid to check for valid dates
+  isAfter, // Import isAfter for date comparison
+  isBefore, // Import isBefore for date comparison
 } from 'date-fns';
 
 // Import Recharts components
@@ -63,16 +75,17 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  PieChart, // Still imported but not used for services chart
-  Pie, // Still imported but not used for services chart
+  PieChart,
+  Pie,
   Cell,
 } from 'recharts';
 
 import { writeClient } from '@/lib/sanity';
+import { AppointmentDetailModal } from './AppointmentDetailModal';
 
 interface Appointment {
   _id: string;
-  customer: { _id: string; name: string };
+  customer: { _id: string; name: string; email?: string; phone?: string; };
   barber: { _id: string; name: string };
   service: { _id: string; name: string; duration: number; price: number };
   dateTime: string;
@@ -89,21 +102,25 @@ interface Barber {
 interface Service {
   _id: string;
   name: string;
-  price: number; // Ensure service price is available for profitability calculation
+  price: number;
 }
 
 interface BarberDailyAppointmentsClientProps {
   barbers: Barber[];
-  services: Service[]; // Pass services for analytics, now including price
+  services: Service[];
   todayAppointments: Appointment[];
   upcomingAppointments: Appointment[];
 }
 
-// Define a color palette for charts
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#d0ed57', '#a4de6c', '#8dd1e1'];
 
 
-export default function BarberDailyAppointmentsClient({ barbers, services, todayAppointments, upcomingAppointments }: BarberDailyAppointmentsClientProps) {
+export default function BarberDailyAppointmentsClient({
+  barbers,
+  services,
+  todayAppointments: initialTodayAppointments,
+  upcomingAppointments: initialUpcomingAppointments,
+}: BarberDailyAppointmentsClientProps) {
   const theme = useTheme();
   const router = useRouter();
   const toast = useToast();
@@ -116,6 +133,14 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
   const [appointmentToCancelId, setAppointmentToCancelId] = useState<string | null>(null);
   const cancelRef = React.useRef<HTMLButtonElement>(null);
 
+  const { isOpen: isAppointmentDetailModalOpen, onOpen: onAppointmentDetailModalOpen, onClose: onAppointmentDetailModalClose } = useDisclosure();
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+
+  const [selectedBarberFilter, setSelectedBarberFilter] = useState<string>('all');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
+  const [startDateFilter, setStartDateFilter] = useState<string>('');
+  const [endDateFilter, setEndDateFilter] = useState<string>('');
+
   const bgColor = useColorModeValue(theme.colors.neutral.light['bg-primary'], theme.colors.neutral.dark['bg-primary']);
   const textColorPrimary = useColorModeValue(theme.colors.neutral.light['text-primary'], theme.colors.neutral.dark['text-primary']);
   const textColorSecondary = useColorModeValue(theme.colors.neutral.light['text-secondary'], theme.colors.neutral.dark['text-secondary']);
@@ -123,15 +148,17 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
   const borderColor = useColorModeValue(theme.colors.neutral.light['border-color'], theme.colors.neutral.dark['border-color']);
   const apptCardBgLight = useColorModeValue('gray.50', 'gray.700');
   const apptCardBorderLight = useColorModeValue('gray.200', 'gray.600');
-  // Define inputBg inside the component as it uses a hook
-  const inputBg = useColorModeValue('white', 'gray.700'); // Moved inside the component
+  const inputBg = useColorModeValue('white', 'gray.700');
+
+  const theadBg = useColorModeValue('gray.100', 'gray.600');
+  const trHoverBg = useColorModeValue('gray.50', 'gray.700');
 
 
   useEffect(() => {
-    const combinedAppointments = [...todayAppointments, ...upcomingAppointments];
+    const combinedAppointments = [...initialTodayAppointments, ...initialUpcomingAppointments];
     setAllAppointments(combinedAppointments);
     setLoading(false);
-  }, [todayAppointments, upcomingAppointments]);
+  }, [initialTodayAppointments, initialUpcomingAppointments]);
 
   const statusColumns = useMemo(() => [
     { id: 'pending', title: 'Pending', colorScheme: 'orange' },
@@ -303,6 +330,12 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
     }
   };
 
+  const handleViewAppointmentDetails = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    onAppointmentDetailModalOpen();
+  };
+
+
   // --- Analytics Logic ---
   const analyticsData = useMemo(() => {
     const completedAppointments = allAppointments.filter(appt => appt.status === 'completed');
@@ -314,16 +347,13 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
     let totalCompletedAppointments = 0;
     let totalRevenue = 0;
 
-    // Determine the interval for time series data
     let intervalDates: Date[] = [];
     if (completedAppointments.length > 0) {
-      // Use min/max date from completed appointments
       const minDate = completedAppointments.reduce((min, appt) =>
         (parseISO(appt.dateTime) < min ? parseISO(appt.dateTime) : min), parseISO(completedAppointments[0].dateTime));
       const maxDate = completedAppointments.reduce((max, appt) =>
         (parseISO(appt.dateTime) > max ? parseISO(appt.dateTime) : max), parseISO(completedAppointments[0].dateTime));
 
-      // Ensure at least one interval is covered even if only one appointment exists
       const effectiveStartDate = new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate());
       const effectiveEndDate = new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate());
 
@@ -338,7 +368,6 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
       }
     }
 
-    // Initialize timeSeriesMap with all intervals to ensure continuous data
     intervalDates.forEach(date => {
       let key = '';
       if (selectedAnalyticsPeriod === 'daily') {
@@ -360,7 +389,6 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
       totalCompletedAppointments++;
       totalRevenue += servicePrice;
 
-      // Time Series Data
       let key = '';
       if (selectedAnalyticsPeriod === 'daily') {
         key = format(apptDate, 'MMM dd');
@@ -378,7 +406,6 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
       timeSeriesMap[key].completed++;
       timeSeriesMap[key].revenue += servicePrice;
 
-      // Service Performance (Profitable Cuts)
       if (appt.service._id) {
         if (!servicePerformanceMap[appt.service._id]) {
           servicePerformanceMap[appt.service._id] = { count: 0, totalRevenue: 0 };
@@ -387,7 +414,6 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
         servicePerformanceMap[appt.service._id].totalRevenue += servicePrice;
       }
 
-      // Active Barbers
       if (appt.barber._id) {
         activeBarbersMap[appt.barber._id] = (activeBarbersMap[appt.barber._id] || 0) + 1;
       }
@@ -395,20 +421,16 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
 
     const timeSeriesData = Object.keys(timeSeriesMap)
       .sort((a, b) => {
-        // Custom sorting for date-based keys
         if (selectedAnalyticsPeriod === 'daily') {
-          // Assuming 'MMM dd' format, need to prepend year for correct parsing
-          const currentYear = new Date().getFullYear(); // Or dynamically get the year from existing data
+          const currentYear = new Date().getFullYear();
           return parseISO(`${a} ${currentYear}`).getTime() - parseISO(`${b} ${currentYear}`).getTime();
         }
         if (selectedAnalyticsPeriod === 'monthly') {
-          // Assuming 'MMM yyyy' format
           return parseISO(`01 ${a}`).getTime() - parseISO(`01 ${b}`).getTime();
         }
         if (selectedAnalyticsPeriod === 'yearly') {
           return parseInt(a) - parseInt(b);
         }
-        // Fallback for weekly or other complex sorts
         return a.localeCompare(b);
       })
       .map(key => ({ name: key, ...timeSeriesMap[key] }));
@@ -420,7 +442,7 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
         count: servicePerformanceMap[serviceId].count,
         totalRevenue: servicePerformanceMap[serviceId].totalRevenue,
       }))
-      .sort((a, b) => b.totalRevenue - a.totalRevenue); // Sort by most profitable
+      .sort((a, b) => b.totalRevenue - a.totalRevenue);
 
 
     const activeBarbersData = Object.keys(activeBarbersMap)
@@ -428,7 +450,7 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
         name: barbers.find(b => b._id === barberId)?.name || 'Unknown Barber',
         value: activeBarbersMap[barberId],
       }))
-      .sort((a, b) => b.value - a.value); // Sort by most active
+      .sort((a, b) => b.value - a.value);
 
     const averageAppointmentValue = totalCompletedAppointments > 0 ? totalRevenue / totalCompletedAppointments : 0;
 
@@ -437,10 +459,53 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
       totalRevenue,
       averageAppointmentValue,
       timeSeriesData,
-      servicePerformanceData, // Renamed from popularServicesData
+      servicePerformanceData,
       activeBarbersData,
     };
   }, [allAppointments, selectedAnalyticsPeriod, barbers, services]);
+
+  const filteredAllAppointments = useMemo(() => {
+    let filtered = [...allAppointments];
+
+    if (selectedBarberFilter !== 'all') {
+      filtered = filtered.filter(appt => appt.barber._id === selectedBarberFilter);
+    }
+
+    if (selectedStatusFilter !== 'all') {
+      filtered = filtered.filter(appt => appt.status === selectedStatusFilter);
+    }
+
+    // Date filtering logic with validation
+    const start = startDateFilter ? parseISO(startDateFilter) : null;
+    const end = endDateFilter ? parseISO(endDateFilter) : null;
+
+    if (start && end) {
+      if (isValid(start) && isValid(end)) {
+        filtered = filtered.filter(appt => {
+          const apptDate = parseISO(appt.dateTime);
+          return isValid(apptDate) && isWithinInterval(apptDate, { start: start, end: end });
+        });
+      }
+    } else if (start) {
+      if (isValid(start)) {
+        filtered = filtered.filter(appt => {
+          const apptDate = parseISO(appt.dateTime);
+          return isValid(apptDate) && apptDate >= start;
+        });
+      }
+    } else if (end) {
+      if (isValid(end)) {
+        filtered = filtered.filter(appt => {
+          const apptDate = parseISO(appt.dateTime);
+          return isValid(apptDate) && apptDate <= end;
+        });
+      }
+    }
+
+    filtered.sort((a, b) => parseISO(a.dateTime).getTime() - parseISO(b.dateTime).getTime());
+
+    return filtered;
+  }, [allAppointments, selectedBarberFilter, selectedStatusFilter, startDateFilter, endDateFilter]);
 
 
   if (loading && allAppointments.length === 0) {
@@ -468,6 +533,9 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
             <Button colorScheme="purple" onClick={() => router.push('/barber-dashboard/manage')}>
               Manage Data
             </Button>
+            <Button colorScheme="blue" onClick={() => router.push('/barber-dashboard/messages')}>
+              Messages
+            </Button>
           </Stack>
         </Flex>
 
@@ -479,7 +547,6 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
           </TabList>
 
           <TabPanels p={4} bg={cardBg} borderRadius="md" shadow="md" borderWidth="1px" borderColor={borderColor}>
-            {/* Tab 1: Today's Appointments (Bin Structure) */}
             <TabPanel>
               <Text fontSize="xl" color={textColorSecondary} mb={6} textAlign="center">
                 Appointments for: <Text as="span" fontWeight="bold" color={textColorPrimary}>{format(new Date(), 'EEEE, MMMM do, yyyy')}</Text>
@@ -538,7 +605,14 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
                               </Text>
                             )}
                             <HStack mt={3} justifyContent="flex-end">
-                              {/* Confirm Button for Pending appointments */}
+                              <Button
+                                size="sm"
+                                colorScheme="brand"
+                                variant="outline"
+                                onClick={() => handleViewAppointmentDetails(appt)}
+                              >
+                                View Details
+                              </Button>
                               {appt.status === 'pending' && (
                                 <Button
                                   size="sm"
@@ -550,7 +624,6 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
                                   Confirm
                                 </Button>
                               )}
-                              {/* Mark Completed/Not Completed Button */}
                               {(appt.status === 'confirmed' || appt.status === 'completed') && (
                                 <Button
                                   size="sm"
@@ -562,7 +635,6 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
                                   {appt.status === 'completed' ? 'Mark Not Completed' : 'Mark Completed'}
                                 </Button>
                               )}
-                              {/* Cancel Button */}
                               {(appt.status === 'pending' || appt.status === 'confirmed') && (
                                 <Button
                                   size="sm"
@@ -586,7 +658,6 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
               </SimpleGrid>
             </TabPanel>
 
-            {/* Tab 2: Upcoming Appointments */}
             <TabPanel>
               <Heading as="h2" size="lg" color={textColorPrimary} mb={4}>
                 All Upcoming Appointments
@@ -638,7 +709,14 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
                                         {appt.service.name} for {appt.customer.name}
                                       </Text>
                                       <HStack mt={2} justifyContent="flex-end">
-                                        {/* Confirm Button for Pending appointments */}
+                                        <Button
+                                          size="xs"
+                                          colorScheme="brand"
+                                          variant="outline"
+                                          onClick={() => handleViewAppointmentDetails(appt)}
+                                        >
+                                          View Details
+                                        </Button>
                                         {appt.status === 'pending' && (
                                           <Button
                                             size="xs"
@@ -650,7 +728,6 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
                                             Confirm
                                           </Button>
                                         )}
-                                        {/* Mark Completed/Not Completed Button */}
                                         {(appt.status === 'confirmed' || appt.status === 'completed') && (
                                           <Button
                                             size="xs"
@@ -662,7 +739,6 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
                                             {appt.status === 'completed' ? 'Mark Not Completed' : 'Mark Completed'}
                                           </Button>
                                         )}
-                                        {/* Cancel Button */}
                                         {(appt.status === 'pending' || appt.status === 'confirmed') && (
                                           <Button
                                             size="xs"
@@ -691,7 +767,6 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
               )}
             </TabPanel>
 
-            {/* Tab 3: Analytics */}
             <TabPanel>
               <VStack spacing={6} align="stretch">
                 <Flex justify="space-between" align="center" wrap="wrap">
@@ -700,7 +775,7 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
                   </Heading>
                   <Select
                     value={selectedAnalyticsPeriod}
-                    onChange={(e) => setSelectedAnalyticsPeriod(e.target.value as typeof selectedAnalyticsPeriod)}
+                    onChange={(e: { target: { value: string; }; }) => setSelectedAnalyticsPeriod(e.target.value as typeof selectedAnalyticsPeriod)}
                     width={{ base: '100%', md: '200px' }}
                     bg={inputBg}
                     borderColor={borderColor}
@@ -822,6 +897,143 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
                     No completed appointments data available for analytics.
                   </Text>
                 )}
+
+                <Divider borderColor={borderColor} mt={8} />
+
+                {/* --- All Appointments Table with Filters --- */}
+                <Heading as="h2" size="lg" color={textColorPrimary} mt={4} mb={4}>
+                  All Appointments
+                </Heading>
+                <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} mb={6}>
+                  <FormControl>
+                    <FormLabel color={textColorPrimary}>Filter by Barber:</FormLabel>
+                    <Select
+                      value={selectedBarberFilter}
+                      onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setSelectedBarberFilter(e.target.value)}
+                      bg={inputBg}
+                      borderColor={borderColor}
+                      color={textColorPrimary}
+                    >
+                      <option value="all">All Barbers</option>
+                      {barbers.map(barber => (
+                        <option key={barber._id} value={barber._id}>{barber.name}</option>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  <FormControl>
+                    <FormLabel color={textColorPrimary}>Filter by Status:</FormLabel>
+                    <Select
+                      value={selectedStatusFilter}
+                      onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setSelectedStatusFilter(e.target.value)}
+                      bg={inputBg}
+                      borderColor={borderColor}
+                      color={textColorPrimary}
+                    >
+                      <option value="all">All Statuses</option>
+                      {statusColumns.map(status => (
+                        <option key={status.id} value={status.id}>{status.title}</option>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  <HStack spacing={4}>
+                    <FormControl>
+                      <FormLabel color={textColorPrimary}>Start Date:</FormLabel>
+                      <Input
+                        type="date"
+                        value={startDateFilter}
+                        onChange={(e: { target: { value: any; }; }) => {
+                          const newStartDate = e.target.value;
+                          setStartDateFilter(newStartDate);
+                          // If end date is set and new start date is after end date, clear end date
+                          if (endDateFilter && newStartDate) {
+                            const parsedNewStartDate = parseISO(newStartDate);
+                            const parsedEndDate = parseISO(endDateFilter);
+                            if (isValid(parsedNewStartDate) && isValid(parsedEndDate) && isAfter(parsedNewStartDate, parsedEndDate)) {
+                              setEndDateFilter('');
+                            }
+                          }
+                        }}
+                        bg={inputBg}
+                        borderColor={borderColor}
+                        color={textColorPrimary}
+                      />
+                    </FormControl>
+                    <FormControl>
+                      <FormLabel color={textColorPrimary}>End Date:</FormLabel>
+                      <Input
+                        type="date"
+                        value={endDateFilter}
+                        onChange={(e: { target: { value: any; }; }) => {
+                          const newEndDate = e.target.value;
+                          setEndDateFilter(newEndDate);
+                          // If start date is set and new end date is before start date, clear start date
+                          if (startDateFilter && newEndDate) {
+                            const parsedNewEndDate = parseISO(newEndDate);
+                            const parsedStartDate = parseISO(startDateFilter);
+                            if (isValid(parsedNewEndDate) && isValid(parsedStartDate) && isBefore(parsedNewEndDate, parsedStartDate)) {
+                              setStartDateFilter('');
+                            }
+                          }
+                        }}
+                        bg={inputBg}
+                        borderColor={borderColor}
+                        color={textColorPrimary}
+                      />
+                    </FormControl>
+                  </HStack>
+                </SimpleGrid>
+
+                {filteredAllAppointments.length > 0 ? (
+                  <Box overflowX="auto" borderWidth="1px" borderColor={borderColor} borderRadius="lg" shadow="md">
+                    <Table variant="simple" size="md">
+                      <Thead bg={theadBg}>
+                        <Tr>
+                          <Th color={textColorSecondary}>Date & Time</Th>
+                          <Th color={textColorSecondary}>Customer</Th>
+                          <Th color={textColorSecondary}>Barber</Th>
+                          <Th color={textColorSecondary}>Service</Th>
+                          <Th color={textColorSecondary}>Status</Th>
+                          <Th color={textColorSecondary}>Actions</Th>
+                        </Tr>
+                      </Thead>
+                      <Tbody>
+                        {filteredAllAppointments.map(appt => (
+                          <Tr key={appt._id} _hover={{ bg: trHoverBg }}>
+                            <Td color={textColorPrimary}>{format(parseISO(appt.dateTime), 'MMM dd, yyyy hh:mm a')}</Td>
+                            <Td color={textColorPrimary}>
+                              <Text fontWeight="semibold">{appt.customer.name}</Text>
+                              {appt.customer.email && <Text fontSize="sm" color={textColorSecondary}>{appt.customer.email}</Text>}
+                              {appt.customer.phone && <Text fontSize="sm" color={textColorSecondary}>{appt.customer.phone}</Text>}
+                            </Td>
+                            <Td color={textColorPrimary}>{appt.barber.name}</Td>
+                            <Td color={textColorPrimary}>{appt.service.name}</Td>
+                            <Td>
+                              <Tag size="md" colorScheme={statusColumns.find(s => s.id === appt.status)?.colorScheme || 'gray'} borderRadius="full">
+                                {appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}
+                              </Tag>
+                            </Td>
+                            <Td>
+                              <Button
+                                size="sm"
+                                colorScheme="brand"
+                                variant="outline"
+                                onClick={() => handleViewAppointmentDetails(appt)}
+                              >
+                                View Details
+                              </Button>
+                            </Td>
+                          </Tr>
+                        ))}
+                      </Tbody>
+                    </Table>
+                  </Box>
+                ) : (
+                  <Text color={textColorSecondary} textAlign="center" fontSize="lg" py={10}>
+                    No appointments found matching the selected filters.
+                  </Text>
+                )}
               </VStack>
             </TabPanel>
           </TabPanels>
@@ -855,6 +1067,13 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
             </AlertDialogContent>
           </AlertDialogOverlay>
         </AlertDialog>
+
+        {/* Appointment Detail Modal */}
+        <AppointmentDetailModal
+          isOpen={isAppointmentDetailModalOpen}
+          onClose={onAppointmentDetailModalClose}
+          appointment={selectedAppointment}
+        />
       </Container>
     </Box>
   );

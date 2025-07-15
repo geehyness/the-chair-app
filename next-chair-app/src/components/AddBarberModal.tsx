@@ -44,7 +44,7 @@ interface DailyAvailability {
 interface Barber {
   _id: string;
   name: string;
-  bio?: any; // Portable Text array
+  bio?: string; // Changed from 'any' (Portable Text array) to 'string' for plain text
   image?: any; // Sanity image object
   dailyAvailability?: DailyAvailability[];
 }
@@ -61,7 +61,7 @@ export function AddBarberModal({ isOpen, onClose, onBarberSaved, initialBarber }
   const theme = useTheme();
 
   const [name, setName] = useState('');
-  const [bio, setBio] = useState('');
+  const [bio, setBio] = useState(''); // Initialized as string
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [dailyAvailability, setDailyAvailability] = useState<DailyAvailability[]>([{ dayOfWeek: '', startTime: '', endTime: '' }]);
@@ -78,7 +78,7 @@ export function AddBarberModal({ isOpen, onClose, onBarberSaved, initialBarber }
   useEffect(() => {
     if (isOpen && initialBarber) {
       setName(initialBarber.name || '');
-      setBio(initialBarber.bio ? JSON.stringify(initialBarber.bio) : ''); // Portable Text to string
+      setBio(initialBarber.bio || ''); // Directly set bio as string
       if (initialBarber.image) {
         setImagePreviewUrl(urlFor(initialBarber.image).url());
       } else {
@@ -157,7 +157,7 @@ export function AddBarberModal({ isOpen, onClose, onBarberSaved, initialBarber }
       // Prepare fields for Sanity
       const fields: any = {
         name,
-        bio: bio ? JSON.parse(bio) : undefined, // Convert back to JSON for Portable Text
+        bio: bio || undefined, // Directly use bio string, or undefined if empty
         dailyAvailability: dailyAvailability.filter(block => block.dayOfWeek && block.startTime && block.endTime)
       };
 
@@ -259,7 +259,7 @@ export function AddBarberModal({ isOpen, onClose, onBarberSaved, initialBarber }
               <FormLabel color={labelColor}>Name</FormLabel>
               <Input
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setName(e.target.value)}
                 placeholder="Barber's Full Name"
                 bg={inputBg}
                 borderColor={borderColor}
@@ -268,19 +268,19 @@ export function AddBarberModal({ isOpen, onClose, onBarberSaved, initialBarber }
             </FormControl>
 
             <FormControl id="bio">
-              <FormLabel color={labelColor}>Bio (Portable Text/JSON)</FormLabel>
+              <FormLabel color={labelColor}>Bio</FormLabel> {/* Removed Portable Text/JSON from label */}
               <Textarea
                 value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                placeholder='Enter bio as Portable Text JSON (e.g., [{"_key":"abc","...}])'
+                onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setBio(e.target.value)}
+                placeholder='Enter a short biography for the barber.' // Updated placeholder
                 rows={5}
                 bg={inputBg}
                 borderColor={borderColor}
                 _placeholder={{ color: placeholderColor }}
               />
               <Text fontSize="sm" color={placeholderColor} mt={1}>
-                For rich text, provide content as a JSON array following Sanity's Portable Text structure.
-              </Text>
+                A brief description or biography of the barber.
+              </Text> {/* Updated description */}
             </FormControl>
 
             <FormControl id="image">
@@ -313,7 +313,7 @@ export function AddBarberModal({ isOpen, onClose, onBarberSaved, initialBarber }
                         <FormLabel fontSize="sm" color={placeholderColor}>Day of Week</FormLabel>
                         <Select
                           value={block.dayOfWeek}
-                          onChange={(e) => handleAvailabilityChange(index, 'dayOfWeek', e.target.value)}
+                          onChange={(e: { target: { value: string; }; }) => handleAvailabilityChange(index, 'dayOfWeek', e.target.value)}
                           bg={inputBg}
                           borderColor={borderColor}
                         >
@@ -328,7 +328,7 @@ export function AddBarberModal({ isOpen, onClose, onBarberSaved, initialBarber }
                         <Input
                           type="time"
                           value={block.startTime}
-                          onChange={(e) => handleAvailabilityChange(index, 'startTime', e.target.value)}
+                          onChange={(e: { target: { value: string; }; }) => handleAvailabilityChange(index, 'startTime', e.target.value)}
                           bg={inputBg}
                           borderColor={borderColor}
                         />
@@ -338,7 +338,7 @@ export function AddBarberModal({ isOpen, onClose, onBarberSaved, initialBarber }
                         <Input
                           type="time"
                           value={block.endTime}
-                          onChange={(e) => handleAvailabilityChange(index, 'endTime', e.target.value)}
+                          onChange={(e: { target: { value: string; }; }) => handleAvailabilityChange(index, 'endTime', e.target.value)}
                           bg={inputBg}
                           borderColor={borderColor}
                         />

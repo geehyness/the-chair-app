@@ -95,11 +95,10 @@ export default function BarbersClient({ barbers }: BarbersClientProps) {
                 <Heading as="h3" size="md" mb={2} textAlign="center" color={textColorPrimary}>
                   {barber.name}
                 </Heading>
-                <Text fontSize="md" color={textColorSecondary} textAlign="center" noOfLines={3}>
-                  {/* Display a snippet of the bio or a placeholder */}
-                  {barber.bio && Array.isArray(barber.bio) && barber.bio.length > 0 && barber.bio[0].children && barber.bio[0].children.length > 0
-                    ? barber.bio[0].children[0].text
-                    : 'No bio available.'}
+                <Text fontSize="md" color={textColorSecondary} textAlign="center" noOfLines={4} mb={3}> {/* Increased lines for bio */}
+                  {typeof barber.bio === 'string'
+                    ? barber.bio.substring(0, 50) + (barber.bio.length > 50 ? '...' : '')
+                    : 'No bio.'}
                 </Text>
                 <Flex justify="center" mt={4}>
                   <Button

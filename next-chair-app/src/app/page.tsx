@@ -19,7 +19,7 @@ export interface Barber { // Exported for potential reuse
   name: string;
   slug: { current: string };
   image?: any;
-  bio?: any;
+  bio?: string; // Changed to string
   dailyAvailability?: Array<{
     _key: string;
     dayOfWeek: string;
@@ -60,7 +60,7 @@ async function getHomePageData(): Promise<{
         name,
         slug,
         image,
-        bio,
+        bio, // Fetch bio directly as it's now a string in Sanity
         dailyAvailability[]{\n          _key,\n          dayOfWeek,\n          startTime,\n          endTime\n        }
       },
       "services": *[_type == "service"] | order(price asc){
@@ -76,7 +76,8 @@ async function getHomePageData(): Promise<{
       "siteSettings": *[_type == "siteSettings"][0]{ title, description, coverImage }
     }
   `;
-  const data = await client.fetch(query);
+  // Added { next: { revalidate: 0 } } to disable caching for this fetch
+  const data = await client.fetch(query, {}, { next: { revalidate: 0 } });
 
   // Ensure siteSettings is an object, even if null from Sanity
   const siteSettings = data.siteSettings || {};

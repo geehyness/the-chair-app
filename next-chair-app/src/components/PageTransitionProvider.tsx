@@ -227,7 +227,7 @@ export const PageTransitionProvider: React.FC<{ children: React.ReactNode }> = (
               >
                 G
               </motion.span>
-              <motion.span
+              {/*<motion.span
                 animate={{
                   opacity: [1, 0.3, 1, 0.2, 1],
                 }}
@@ -239,7 +239,7 @@ export const PageTransitionProvider: React.FC<{ children: React.ReactNode }> = (
                 }}
               >
                 ...
-              </motion.span>
+              </motion.span>*/}
             </motion.div>
           </motion.div>
         )}

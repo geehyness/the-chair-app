@@ -535,8 +535,12 @@ export default function BarberDashboardClient({
                           </Td>
                           <Td color={textColorSecondary}>{barber.name}</Td>
                           <Td color={textColorSecondary}>
-                            {barber.bio && Array.isArray(barber.bio) && barber.bio.length > 0 && barber.bio[0].children && barber.bio[0].children.length > 0 ?
-                              barber.bio[0].children[0].text.substring(0, 50) + '...'
+                            
+
+
+
+                            {typeof barber.bio === 'string'
+                              ? barber.bio.substring(0, 50) + (barber.bio.length > 50 ? '...' : '')
                               : 'No bio.'}
                           </Td>
                           <Td>
