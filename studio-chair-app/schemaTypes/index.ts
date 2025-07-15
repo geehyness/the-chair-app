@@ -8,7 +8,8 @@ import galleryImage from './galleryImage'
 import testimonial from './testimonial'
 import siteSettings from './siteSettings'
 import blogPost from './blogPost'
-import logEntry from './logEntry' // Import logEntry
+import logEntry from './logEntry'
+import contact from './contact' // Import the new contact schema
 
 export const schemaTypes = [
   service,
@@ -20,5 +21,6 @@ export const schemaTypes = [
   testimonial,
   siteSettings,
   blogPost,
-  logEntry, // Add logEntry to the schemaTypes array
+  logEntry,
+  contact, // Add contact to the schemaTypes array
 ]

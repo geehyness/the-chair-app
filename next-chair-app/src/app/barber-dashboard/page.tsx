@@ -11,6 +11,19 @@ import { Metadata } from 'next';
 // Ensure the 'Service' interface is imported from manage/page.tsx
 import type { Barber, Appointment, Service, Customer } from '@/app/barber-dashboard/manage/page';
 
+// NEW: Define interface for Contact messages
+export interface Contact {
+  _id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  subject: string;
+  message: string;
+  sentAt: string;
+  status: 'new' | 'inProgress' | 'resolved' | 'spam';
+  resolutionNotes?: string;
+}
+
 export const metadata: Metadata = {
   title: 'Today\'s & Upcoming Appointments - Barber Dashboard', // Updated title
   description: 'Overview of all appointments for today and upcoming days across all barbers.',
@@ -19,9 +32,10 @@ export const metadata: Metadata = {
 // Function to fetch all barbers and today's appointments
 async function getDailyAppointmentsData(): Promise<{
   barbers: Barber[];
-  services: Service[]; // NEW: Add services to the return type
+  services: Service[];
   todayAppointments: Appointment[];
   upcomingAppointments: Appointment[];
+  contacts: Contact[]; // NEW: Add contacts to the return type
 }> {
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Start of today
@@ -35,21 +49,28 @@ async function getDailyAppointmentsData(): Promise<{
         name,
         slug,
         image,
+        bio, // Include bio for BarberProfileModal
         dailyAvailability[] {
           _key,
           dayOfWeek,
           startTime,
           endTime
         }
-      } | order(name asc),
-      "services": *[_type == "service"]{ // NEW: Fetch all services
+      },
+      "services": *[_type == "service"]{
         _id,
         name,
-        price
-      } | order(name asc),
-      "todayAppointments": *[_type == "appointment" && dateTime < $endOfDay && dateTime >= $startOfDay]{
+        slug,
+        description,
+        image,
+        duration,
+        price,
+        category->{_id, title},
+        barbers[]->{_id, name}
+      },
+      "todayAppointments": *[_type == "appointment" && dateTime >= $startOfDay && dateTime < $endOfDay]{
         _id,
-        customer->{_id, name, email},
+        customer->{_id, name, email, phone}, // Fetch customer details needed for display
         barber->{_id, name},
         service->{_id, name, duration, price}, // Fetch service details needed for display
         dateTime,
@@ -58,13 +79,24 @@ async function getDailyAppointmentsData(): Promise<{
       } | order(dateTime asc),
       "upcomingAppointments": *[_type == "appointment" && dateTime >= $endOfDay]{
         _id,
-        customer->{_id, name, email},
+        customer->{_id, name, email, phone},
         barber->{_id, name},
         service->{_id, name, duration, price},
         dateTime,
         status,
         notes
-      } | order(dateTime asc)
+      } | order(dateTime asc),
+      "contacts": *[_type == "contact"]{ // NEW: Fetch all contact messages
+        _id,
+        name,
+        email,
+        phone,
+        subject,
+        message,
+        sentAt,
+        status,
+        resolutionNotes
+      } | order(sentAt desc) // Order by most recent messages first
     }
   `;
 
@@ -81,19 +113,20 @@ async function getDailyAppointmentsData(): Promise<{
 
   return {
     barbers: processedBarbers || [],
-    services: data.services || [], // NEW: Return services
+    services: data.services || [],
     todayAppointments: data.todayAppointments || [],
     upcomingAppointments: data.upcomingAppointments || [],
+    contacts: data.contacts || [], // NEW: Return contacts
   };
 }
 
 export default async function BarberDashboardAppointmentsPage() {
-  const { barbers, services, todayAppointments, upcomingAppointments } = await getDailyAppointmentsData(); // NEW: Destructure services
+  const { barbers, services, todayAppointments, upcomingAppointments, contacts } = await getDailyAppointmentsData(); // NEW: Destructure contacts
 
   return (
     <BarberDailyAppointmentsClient
       barbers={barbers}
-      services={services} // NEW: Pass services to client component
+      services={services}
       todayAppointments={todayAppointments}
       upcomingAppointments={upcomingAppointments}
     />

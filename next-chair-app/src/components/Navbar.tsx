@@ -6,6 +6,7 @@ import {
   Box, Flex, Heading, Button, Stack, useColorMode, useColorModeValue, IconButton, Menu, MenuButton, MenuList, MenuItem, Link as ChakraLink, Text, useTheme,
   Spinner, // Import Spinner for loading indicator
   Icon,    // Import Icon for general icon use
+  Image,   // Import Image component for the app icon
 } from '@chakra-ui/react';
 import { HamburgerIcon, CloseIcon, MoonIcon, SunIcon } from '@chakra-ui/icons';
 import NextLink from 'next/link';
@@ -17,9 +18,10 @@ interface NavbarProps {
   type: 'customer' | 'dashboard';
   appName?: string;
   onDashboardLogout?: () => Promise<void>;
+  siteLogoUrl?: string; // NEW: Add siteLogoUrl prop
 }
 
-export function Navbar({ type, appName = 'The Chair App', onDashboardLogout }: NavbarProps) {
+export function Navbar({ type, appName = 'The Chair App', onDashboardLogout, siteLogoUrl }: NavbarProps) {
   const { colorMode, toggleColorMode } = useColorMode();
   const theme = useTheme();
   const router = useRouter();
@@ -41,8 +43,8 @@ export function Navbar({ type, appName = 'The Chair App', onDashboardLogout }: N
   const dashboardLinks = [
     { label: 'Today\'s Appointments', href: '/barber-dashboard' }, // New link for daily overview
     { label: 'Manage Data', href: '/barber-dashboard/manage' }, // Link to the full management dashboard
-    { label: 'Reports', href: '/barber-dashboard/admin-reports' }, // Existing reports link
-    // You can add other specific dashboard links here if needed
+    { label: 'Reports', href: '/barber-dashboard/admin-reports' },
+    { label: 'Messages', href: '/barber-dashboard/messages' },
   ];
 
   const currentLinks = type === 'customer' ? customerLinks : dashboardLinks;
@@ -51,6 +53,9 @@ export function Navbar({ type, appName = 'The Chair App', onDashboardLogout }: N
   const textColor = useColorModeValue(theme.colors.neutral.light['text-header'], theme.colors.neutral.dark['text-header']);
   const hoverBg = useColorModeValue(theme.colors.brand['100'], theme.colors.brand['700']);
   const borderColor = useColorModeValue(theme.colors.neutral.light['border-color'], theme.colors.neutral.dark['border-color']);
+
+  // Use the siteLogoUrl prop if provided, otherwise fallback to a placeholder
+  const displayedIconUrl = siteLogoUrl || "https://placehold.co/40x40/326AA0/FFFFFF?text=App";
 
   return (
     <Box
@@ -65,17 +70,28 @@ export function Navbar({ type, appName = 'The Chair App', onDashboardLogout }: N
       opacity={1}
     >
       <Flex h={16} alignItems={'center'} justifyContent={'space-between'}>
-        <NextLink href="/">
-          <Heading as="h1" size="md" color={textColor} _hover={{ cursor: 'pointer' }}>
-            {appName}
-          </Heading>
+        <NextLink href="/" passHref>
+          {/* Wrapped Image and Heading in a Flex to keep them close */}
+          <Flex alignItems="center" cursor="pointer">
+            <Image
+              src={displayedIconUrl} // Use displayedIconUrl here
+              alt={`${appName} Logo`}
+              boxSize="40px" // Set a fixed size for the icon
+              borderRadius="full" // Make it circular if desired
+              objectFit="cover"
+              mr={2} // Add some margin to the right of the image
+            />
+            <Heading as="h1" size="md" color={textColor}>
+              {appName}
+            </Heading>
+          </Flex>
         </NextLink>
 
         {/* Desktop Navigation */}
         <Flex as="nav" display={{ base: 'none', md: 'flex' }} alignItems="center" ml={10}>
           <Stack direction={'row'} spacing={7}>
             {currentLinks.map((link) => (
-              <NextLink key={link.href} href={link.href}>
+              <NextLink key={link.href} href={link.href} passHref>
                 <ChakraLink
                   as={Button}
                   variant="ghost"

@@ -298,7 +298,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
           <Input
             type="text"
             value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
+            onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setCustomerName(e.target.value)}
             bg={inputBg}
             borderColor={inputBorder}
             _placeholder={{ color: placeholderColor }}
@@ -310,7 +310,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
           <Input
             type="email"
             value={customerEmail}
-            onChange={(e) => setCustomerEmail(e.target.value)}
+            onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setCustomerEmail(e.target.value)}
             bg={inputBg}
             borderColor={inputBorder}
             _placeholder={{ color: placeholderColor }}
@@ -322,7 +322,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
           <Input
             type="tel"
             value={customerPhone}
-            onChange={(e) => setCustomerPhone(e.target.value)}
+            onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setCustomerPhone(e.target.value)}
             bg={inputBg}
             borderColor={inputBorder}
             _placeholder={{ color: placeholderColor }}
@@ -333,7 +333,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
           <FormLabel color={labelColor}>Select Service</FormLabel>
           <Select
             value={selectedServiceId}
-            onChange={(e) => setSelectedServiceId(e.target.value)}
+            onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setSelectedServiceId(e.target.value)}
             bg={inputBg}
             borderColor={inputBorder}
             _placeholder={{ color: placeholderColor }}
@@ -351,7 +351,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
           <FormLabel color={labelColor}>Select Barber</FormLabel>
           <Select
             value={selectedBarberId}
-            onChange={(e) => setSelectedBarberId(e.target.value)}
+            onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setSelectedBarberId(e.target.value)}
             bg={inputBg}
             borderColor={inputBorder}
             _placeholder={{ color: placeholderColor }}
@@ -372,7 +372,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
             <Input
               type="date"
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setSelectedDate(e.target.value)}
               min={format(new Date(), 'yyyy-MM-dd')} // Prevent selecting past dates
               bg={inputBg}
               borderColor={inputBorder}
@@ -385,7 +385,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
             <FormLabel color={labelColor}>Select Time</FormLabel>
             <Select
               value={selectedTime}
-              onChange={(e) => setSelectedTime(e.target.value)}
+              onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setSelectedTime(e.target.value)}
               bg={inputBg}
               borderColor={inputBorder}
               _placeholder={{ color: placeholderColor }}
@@ -409,7 +409,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
           <FormLabel color={labelColor}>Notes (Optional)</FormLabel>
           <Textarea
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setNotes(e.target.value)}
             rows={3}
             bg={inputBg}
             borderColor={inputBorder}
@@ -420,7 +420,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
         {/* New: Create Account Checkbox */}
         <Checkbox
           isChecked={createAccountChecked}
-          onChange={(e) => setCreateAccountChecked(e.target.checked)}
+          onChange={(e: { target: { checked: boolean | ((prevState: boolean) => boolean); }; }) => setCreateAccountChecked(e.target.checked)}
           colorScheme="brand"
           color={textColorPrimary}
         >

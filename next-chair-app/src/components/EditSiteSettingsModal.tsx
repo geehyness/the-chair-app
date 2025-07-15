@@ -30,7 +30,7 @@ import {
   TagCloseButton,
   Text,
 } from '@chakra-ui/react';
-import { client, urlFor } from '@/lib/sanity'; // Ensure client and urlFor are imported
+import { client, urlFor } from '@/lib/sanity'; // Ensure client and urlFor are imported (for read operations)
 import { groq } from 'next-sanity';
 
 // Define interfaces for SiteSettings
@@ -63,6 +63,7 @@ export function EditSiteSettingsModal({ isOpen, onClose, onSettingsSaved }: Edit
   const toast = useToast();
   const theme = useTheme();
 
+  const [siteSettingsId, setSiteSettingsId] = useState<string | null>(null); // State to store the _id of siteSettings
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [phone, setPhone] = useState('');
@@ -79,7 +80,7 @@ export function EditSiteSettingsModal({ isOpen, onClose, onSettingsSaved }: Edit
   const [previewCoverImageUrl, setPreviewCoverImageUrl] = useState<string | undefined>(undefined); // URL for cover image preview
 
   const [isLoading, setIsLoading] = useState(false);
-  const [showImageSpinners, setShowImageSpinners] = useState(false);
+  const [showImageSpinners, setShowImageSpinners] = useState(false); // Used to show spinners during image upload
 
   const cardBg = useColorModeValue(theme.colors.neutral.light['bg-card'], theme.colors.neutral.dark['bg-card']);
   const textColorPrimary = useColorModeValue(theme.colors.neutral.light['text-primary'], theme.colors.neutral.dark['text-primary']);
@@ -97,6 +98,7 @@ export function EditSiteSettingsModal({ isOpen, onClose, onSettingsSaved }: Edit
       // Fetch current settings when modal opens
       setIsLoading(true);
       client.fetch(groq`*[_type == "siteSettings"][0]{
+        _id, // Fetch the _id
         title,
         description,
         phone,
@@ -107,6 +109,7 @@ export function EditSiteSettingsModal({ isOpen, onClose, onSettingsSaved }: Edit
         socialLinks
       }`).then((data: SiteSettings) => {
         if (data) {
+          setSiteSettingsId(data._id || null); // Set the fetched _id
           setTitle(data.title || '');
           setDescription(data.description || '');
           setPhone(data.phone || '');
@@ -115,6 +118,17 @@ export function EditSiteSettingsModal({ isOpen, onClose, onSettingsSaved }: Edit
           setSocialLinks(data.socialLinks || []);
           setPreviewLogoUrl(data.logoUrl); // Set preview URL
           setPreviewCoverImageUrl(data.coverImageUrl); // Set preview URL
+        } else {
+          // If no settings document exists, ensure states are cleared for a new creation
+          setSiteSettingsId(null);
+          setTitle('');
+          setDescription('');
+          setPhone('');
+          setEmail('');
+          setLocation('');
+          setSocialLinks([]);
+          setPreviewLogoUrl(undefined);
+          setPreviewCoverImageUrl(undefined);
         }
       }).catch((error) => {
         console.error('Failed to fetch site settings:', error);
@@ -130,7 +144,7 @@ export function EditSiteSettingsModal({ isOpen, onClose, onSettingsSaved }: Edit
       });
 
       // Clear file inputs and new social link fields on open
-      setLogoFile(null); // Corrected from setImageFile
+      setLogoFile(null);
       setCoverImageFile(null);
       setNewSocialPlatform('');
       setNewSocialUrl('');
@@ -184,75 +198,49 @@ export function EditSiteSettingsModal({ isOpen, onClose, onSettingsSaved }: Edit
     setShowImageSpinners(true); // Show spinners when starting upload/save
 
     try {
-      let logoAssetRef = undefined;
-      let coverImageAssetRef = undefined;
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('description', description);
+      formData.append('phone', phone);
+      formData.append('email', email);
+      formData.append('location', location);
+      formData.append('socialLinks', JSON.stringify(socialLinks));
 
-      // Upload new logo if a file is selected
+      // Append logo file or 'null' string if cleared
       if (logoFile) {
-        const logoAsset = await client.assets.upload('image', logoFile);
-        logoAssetRef = {
-          _type: 'image',
-          asset: {
-            _ref: logoAsset._id,
-            _type: 'reference',
-          },
-        };
+        formData.append('logo', logoFile);
+      } else if (previewLogoUrl === undefined) {
+        formData.append('logo', 'null'); // Indicate explicit removal of existing logo
       }
 
-      // Upload new cover image if a file is selected
+      // Append cover image file or 'null' string if cleared
       if (coverImageFile) {
-        const coverImageAsset = await client.assets.upload('image', coverImageFile);
-        coverImageAssetRef = {
-          _type: 'image',
-          asset: {
-            _ref: coverImageAsset._id,
-            _type: 'reference',
-          },
-        };
+        formData.append('coverImage', coverImageFile);
+      } else if (previewCoverImageUrl === undefined) {
+        formData.append('coverImage', 'null'); // Indicate explicit removal of existing cover image
       }
 
-      // Construct the patch document
-      const patchDoc: SiteSettings = {
-        title,
-        description,
-        phone,
-        email,
-        location,
-        socialLinks,
-      };
-
-      // Conditionally add image assets to the patch document
-      if (logoAssetRef !== undefined) {
-        patchDoc.logo = logoAssetRef;
-      }
-      if (coverImageAssetRef !== undefined) {
-        patchDoc.coverImage = coverImageAssetRef;
-      }
-
-      // If no logo file was selected but there was a preview URL (meaning existing image),
-      // and the user cleared it, explicitly set logo to null to remove it from Sanity.
-      if (!logoFile && previewLogoUrl === undefined) {
-        (patchDoc as any).logo = null;
-      }
-      // Same for cover image
-      if (!coverImageFile && previewCoverImageUrl === undefined) {
-        (patchDoc as any).coverImage = null;
-      }
-
-
-      // Check if siteSettings document exists
-      const existingSettings = await client.fetch(groq`*[_type == "siteSettings"][0]{_id}`);
-      let siteSettingsId = existingSettings ? existingSettings._id : null;
-
+      let response;
       if (siteSettingsId) {
-        // Update existing document
-        await client.patch(siteSettingsId).set(patchDoc).commit();
+        // If an ID exists, use the PUT method to update.
+        response = await fetch(`/api/siteSettings?id=${siteSettingsId}`, {
+          method: 'PUT',
+          body: formData,
+        });
       } else {
-        // Create new document if it doesn't exist
-        const newSettings = { _type: 'siteSettings', ...patchDoc };
-        const createdDoc = await client.create(newSettings);
-        siteSettingsId = createdDoc._id; // Get the ID of the newly created document
+        // If no ID, use the POST method to create.
+        response = await fetch('/api/siteSettings', {
+          method: 'POST',
+          body: formData,
+        });
       }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save settings via API.');
+      }
+
+      const result = await response.json();
 
       toast({
         title: 'Settings saved.',
@@ -280,12 +268,12 @@ export function EditSiteSettingsModal({ isOpen, onClose, onSettingsSaved }: Edit
 
   const handleClearLogo = () => {
     setLogoFile(null);
-    setPreviewLogoUrl(undefined);
+    setPreviewLogoUrl(undefined); // Set to undefined to indicate removal intent
   };
 
   const handleClearCoverImage = () => {
     setCoverImageFile(null);
-    setPreviewCoverImageUrl(undefined);
+    setPreviewCoverImageUrl(undefined); // Set to undefined to indicate removal intent
   };
 
   return (
