@@ -19,6 +19,15 @@ import {
   Select,
   Spinner,
   useToast,
+  useDisclosure,
+  HStack,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  TableContainer,
 } from '@chakra-ui/react';
 import NextLink from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -35,6 +44,7 @@ import {
   eachWeekOfInterval,
   eachMonthOfInterval,
   eachYearOfInterval,
+  isPast,
 } from 'date-fns';
 
 // Import Recharts components
@@ -47,16 +57,22 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  PieChart, // Added for Pie Chart
+  Pie,      // Added for Pie Chart
+  Cell,     // Added for Pie Chart
 } from 'recharts';
 
 // Import PDF and HTML to Canvas libraries
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
+// Import the ClientAppointmentDetailModal
+import ClientAppointmentDetailModal from './ClientAppointmentDetailModal';
+
 // Define interfaces for data passed from the server component
 interface Appointment {
   _id: string;
-  customer: { _id: string; name: string };
+  customer: { _id: string; name: string; email: string; phone?: string };
   barber: { _id: string; name: string };
   service: { _id: string; name: string; duration: number; price: number };
   dateTime: string;
@@ -91,9 +107,11 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
   const router = useRouter();
   const toast = useToast();
 
+  // --- HOOKS: Ensure all hooks are called unconditionally at the top level ---
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [selectedAnalyticsPeriod, setSelectedAnalyticsPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
+  const [asAtDateTime, setAsAtDateTime] = useState('');
 
   const reportContentRef = useRef<HTMLDivElement>(null);
 
@@ -104,17 +122,34 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
   const cardBg = useColorModeValue(theme.colors.neutral.light['bg-card'], theme.colors.neutral.dark['bg-card']);
   const borderColor = useColorModeValue(theme.colors.neutral.light['border-color'], theme.colors.neutral.dark['border-color']);
   const inputBg = useColorModeValue('white', 'gray.700');
-
-  // Define the background color for html2canvas here using the hook
   const canvasBackgroundColor = useColorModeValue('#ffffff', '#1A202C');
+  const appointmentCardBg = useColorModeValue('gray.50', 'gray.700');
+
+  // State and handlers for the ClientAppointmentDetailModal
+  const { isOpen: isDetailModalOpen, onOpen: onDetailModalOpen, onClose: onDetailModalClose } = useDisclosure();
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  // --- END HOOKS ---
+
+  const handleViewDetails = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    onDetailModalOpen();
+  };
 
   useEffect(() => {
     if (allAppointments && barbers && services) {
       setLoading(false);
+      setAsAtDateTime(format(new Date(), 'PPP p'));
     }
   }, [allAppointments, barbers, services]);
 
-  // --- Analytics Logic (remains the same) ---
+  const pastAppointments = useMemo(() => {
+    return allAppointments
+      .filter(appt => isPast(parseISO(appt.dateTime)))
+      .sort((a, b) => parseISO(b.dateTime).getTime() - parseISO(a.dateTime).getTime());
+  }, [allAppointments]);
+
+
+  // --- Analytics Logic ---
   const analyticsData = useMemo(() => {
     if (loading) {
       return {
@@ -124,6 +159,7 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
         timeSeriesData: [],
         servicePerformanceData: [],
         activeBarbersData: [],
+        appointmentStatusDistributionData: [], // Added for pie chart
       };
     }
 
@@ -132,6 +168,12 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
     let timeSeriesMap: { [key: string]: { completed: number; revenue: number; } } = {};
     let servicePerformanceMap: { [serviceId: string]: { count: number; totalRevenue: number; } } = {};
     let activeBarbersMap: { [barberId: string]: number } = {};
+    let appointmentStatusMap: { [status: string]: number } = { // Added for pie chart
+      pending: 0,
+      confirmed: 0,
+      cancelled: 0,
+      completed: 0,
+    };
 
     let totalCompletedAppointments = 0;
     let totalRevenue = 0;
@@ -170,40 +212,51 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
       timeSeriesMap[key] = { completed: 0, revenue: 0 };
     });
 
-    completedAppointments.forEach(appt => {
+    allAppointments.forEach(appt => { // Iterate all appointments for status distribution
       const apptDate = parseISO(appt.dateTime);
       const servicePrice = appt.service.price || 0;
 
-      totalCompletedAppointments++;
-      totalRevenue += servicePrice;
-
-      let key = '';
-      if (selectedAnalyticsPeriod === 'daily') {
-        key = format(apptDate, 'MMM dd');
-      } else if (selectedAnalyticsPeriod === 'weekly') {
-        key = `Week ${format(apptDate, 'w')}, ${format(apptDate, 'yyyy')}`;
-      } else if (selectedAnalyticsPeriod === 'monthly') {
-        key = format(apptDate, 'MMM yyyy');
-      } else if (selectedAnalyticsPeriod === 'yearly') {
-        key = format(apptDate, 'yyyy');
+      // Update status distribution
+      if (appointmentStatusMap[appt.status] !== undefined) {
+        appointmentStatusMap[appt.status]++;
       }
 
-      if (!timeSeriesMap[key]) {
-        timeSeriesMap[key] = { completed: 0, revenue: 0 };
-      }
-      timeSeriesMap[key].completed++;
-      timeSeriesMap[key].revenue += servicePrice;
+      // Only count completed appointments for time series, revenue, barbers
+      if (appt.status === 'completed') {
+        totalCompletedAppointments++;
+        totalRevenue += servicePrice;
 
-      if (appt.service._id) {
-        if (!servicePerformanceMap[appt.service._id]) {
-          servicePerformanceMap[appt.service._id] = { count: 0, totalRevenue: 0 };
+        let key = '';
+        if (selectedAnalyticsPeriod === 'daily') {
+          key = format(apptDate, 'MMM dd');
+        } else if (selectedAnalyticsPeriod === 'weekly') {
+          key = `Week ${format(apptDate, 'w')}, ${format(apptDate, 'yyyy')}`;
+        } else if (selectedAnalyticsPeriod === 'monthly') {
+          key = format(apptDate, 'MMM yyyy');
+        } else if (selectedAnalyticsPeriod === 'yearly') {
+          key = format(apptDate, 'yyyy');
         }
-        servicePerformanceMap[appt.service._id].count++;
-        servicePerformanceMap[appt.service._id].totalRevenue += servicePrice;
-      }
 
-      if (appt.barber._id) {
-        activeBarbersMap[appt.barber._id] = (activeBarbersMap[appt.barber._id] || 0) + 1;
+        if (!timeSeriesMap[key]) {
+          timeSeriesMap[key] = { completed: 0, revenue: 0 };
+        }
+        timeSeriesMap[key].completed++;
+        timeSeriesMap[key].revenue += servicePrice;
+
+        if (appt.service._id) {
+          if (!servicePerformanceMap[appt.service._id]) {
+            servicePerformanceMap[appt.service._id] = { count: 0, totalRevenue: 0 };
+          }
+          servicePerformanceMap[appt.service._id].count++;
+          servicePerformanceMap[appt.service._id].totalRevenue += servicePrice;
+        }
+
+        if (appt.barber._id) {
+          if (!activeBarbersMap[appt.barber._id]) {
+            activeBarbersMap[appt.barber._id] = 0;
+          }
+          activeBarbersMap[appt.barber._id]++;
+        }
       }
     });
 
@@ -213,6 +266,13 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
           if (selectedAnalyticsPeriod === 'daily') {
             return parseISO(`${key} ${new Date().getFullYear()}`);
           }
+          if (selectedAnalyticsPeriod === 'weekly') {
+            const [weekStr, yearStr] = key.split(', ');
+            const weekNum = parseInt(weekStr.replace('Week ', ''));
+            const year = parseInt(yearStr);
+            const d = new Date(year, 0, 1 + (weekNum - 1) * 7);
+            return d;
+          }
           if (selectedAnalyticsPeriod === 'monthly') {
             return parseISO(`01 ${key}`);
           }
@@ -221,13 +281,11 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
           }
           return new Date(key);
         };
-
         const dateA = getSortableDate(a);
         const dateB = getSortableDate(b);
         return dateA.getTime() - dateB.getTime();
       })
       .map(key => ({ name: key, ...timeSeriesMap[key] }));
-
 
     const servicePerformanceData = Object.keys(servicePerformanceMap)
       .map(serviceId => ({
@@ -237,13 +295,19 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
       }))
       .sort((a, b) => b.totalRevenue - a.totalRevenue);
 
-
     const activeBarbersData = Object.keys(activeBarbersMap)
       .map(barberId => ({
         name: barbers.find(b => b._id === barberId)?.name || 'Unknown Barber',
         value: activeBarbersMap[barberId],
       }))
       .sort((a, b) => b.value - a.value);
+
+    const appointmentStatusDistributionData = Object.keys(appointmentStatusMap) // Added for pie chart
+      .map(status => ({
+        name: status.charAt(0).toUpperCase() + status.slice(1),
+        value: appointmentStatusMap[status],
+      }))
+      .filter(data => data.value > 0); // Only show statuses that have appointments
 
     const averageAppointmentValue = totalCompletedAppointments > 0 ? totalRevenue / totalCompletedAppointments : 0;
 
@@ -254,81 +318,61 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
       timeSeriesData,
       servicePerformanceData,
       activeBarbersData,
+      appointmentStatusDistributionData, // Added for pie chart
     };
-  }, [allAppointments, selectedAnalyticsPeriod, barbers, services, loading]);
-
-  // --- Export Functions ---
+  }, [allAppointments, selectedAnalyticsPeriod, loading, services, barbers]);
 
   const handleExportCsv = () => {
     setExporting(true);
+    toast({
+      title: 'Generating CSV...',
+      description: 'Your report is being prepared.',
+      status: 'info',
+      duration: 3000,
+      isClosable: true,
+    });
     try {
-      if (analyticsData.timeSeriesData.length === 0 && analyticsData.servicePerformanceData.length === 0 && analyticsData.activeBarbersData.length === 0) {
-        toast({
-          title: 'No data to export',
-          description: 'There is no analytics data available to export.',
-          status: 'info',
-          duration: 3000,
-          isClosable: true,
-        });
-        return;
-      }
+      const { timeSeriesData, servicePerformanceData, activeBarbersData, appointmentStatusDistributionData } = analyticsData;
 
-      let csvContent = '';
+      let csvContent = "Time Series Data\n";
+      csvContent += "Period,Completed Appointments,Total Revenue\n";
+      timeSeriesData.forEach(data => {
+        csvContent += `${data.name},${data.completed},${data.revenue.toFixed(2)}\n`;
+      });
 
-      // Add report title and generation date
-      csvContent += `"Admin Analytics Report - Generated: ${format(new Date(), 'yyyy-MM-dd HH:mm:ss')}"\n\n`;
+      csvContent += "\nService Performance Data\n";
+      csvContent += "Service,Appointments Count,Total Revenue\n";
+      servicePerformanceData.forEach(data => {
+        csvContent += `${data.name},${data.count},${data.totalRevenue.toFixed(2)}\n`;
+      });
 
-      // 1. Summary Statistics
-      csvContent += `"Summary Statistics"\n`;
-      csvContent += `"Metric","Value"\n`;
-      csvContent += `"Total Completed Appointments",${analyticsData.totalCompletedAppointments}\n`;
-      csvContent += `"Total Revenue","E${analyticsData.totalRevenue.toFixed(2)}"\n`;
-      csvContent += `"Average Appointment Value","E${analyticsData.averageAppointmentValue.toFixed(2)}"\n\n`;
+      csvContent += "\nActive Barbers Data\n";
+      csvContent += "Barber,Appointments Count\n";
+      activeBarbersData.forEach(data => {
+        csvContent += `${data.name},${data.value}\n`;
+      });
 
-      // 2. Time Series Data
-      if (analyticsData.timeSeriesData.length > 0) {
-        csvContent += `"Completed Appointments & Revenue Over Time (${selectedAnalyticsPeriod.charAt(0).toUpperCase() + selectedAnalyticsPeriod.slice(1)} View)"\n`;
-        csvContent += `"Period","Completed Appointments","Revenue"\n`;
-        analyticsData.timeSeriesData.forEach(row => {
-          csvContent += `"${row.name.replace(/"/g, '""')}",${row.completed},${row.revenue.toFixed(2)}\n`;
-        });
-        csvContent += `\n`;
-      }
-
-      // 3. Service Performance Data
-      if (analyticsData.servicePerformanceData.length > 0) {
-        csvContent += `"Service Performance (Profitable Cuts)"\n`;
-        csvContent += `"Service Name","Completed Count","Total Revenue"\n`;
-        analyticsData.servicePerformanceData.forEach(row => {
-          csvContent += `"${row.name.replace(/"/g, '""')}",${row.count},${row.totalRevenue.toFixed(2)}\n`;
-        });
-        csvContent += `\n`;
-      }
-
-      // 4. Most Active Barbers Data
-      if (analyticsData.activeBarbersData.length > 0) {
-        csvContent += `"Most Active Barbers"\n`;
-        csvContent += `"Barber Name","Appointments Completed"\n`;
-        analyticsData.activeBarbersData.forEach(row => {
-          csvContent += `"${row.name.replace(/"/g, '""')}",${row.value}\n`;
-        });
-        csvContent += `\n`;
-      }
-
+      csvContent += "\nAppointment Status Distribution\n"; // Added for pie chart
+      csvContent += "Status,Count\n";
+      appointmentStatusDistributionData.forEach(data => {
+        csvContent += `${data.name},${data.value}\n`;
+      });
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `admin_analytics_report_${format(new Date(), 'yyyyMMdd_HHmmss')}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `admin_report_${format(new Date(), 'yyyyMMdd_HHmmss')}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
 
       toast({
-        title: 'CSV Exported!',
-        description: 'Comprehensive analytics data saved successfully.',
+        title: 'Export Successful',
+        description: 'Analytics data saved successfully.',
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -367,28 +411,25 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
         });
         return;
       }
-
       const input = reportContentRef.current;
       const canvas = await html2canvas(input, {
-        scale: 2, // Increase scale for better resolution
-        useCORS: true, // If you have images from external domains
-        logging: true, // Enable logging for debugging
-        backgroundColor: canvasBackgroundColor, // Use the variable defined at component's top level
+        scale: 2,
+        useCORS: true,
+        logging: true,
+        backgroundColor: canvasBackgroundColor,
       });
-
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4'); // 'p' for portrait, 'mm' for units, 'a4' for size
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210;
+      const pageHeight = 297;
+      const imgHeight = canvas.height * imgWidth / canvas.width;
       let heightLeft = imgHeight;
+
       let position = 0;
 
-      // Add image to PDF
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
 
-      // Handle multiple pages if content is taller than one A4 page
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
@@ -396,11 +437,11 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
         heightLeft -= pageHeight;
       }
 
-      pdf.save(`admin_analytics_report_${format(new Date(), 'yyyyMMdd_HHmmss')}.pdf`);
+      pdf.save(`admin_report_${format(new Date(), 'yyyyMMdd_HHmmss')}.pdf`);
 
       toast({
-        title: 'PDF Exported!',
-        description: 'Analytics report saved as PDF.',
+        title: 'PDF Export Successful',
+        description: 'Your report has been saved as a PDF.',
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -409,7 +450,7 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
       console.error('Error exporting PDF:', error);
       toast({
         title: 'Export Failed',
-        description: `Could not export PDF report. Error: ${error instanceof Error ? error.message : String(error)}`,
+        description: 'Could not export PDF report. Try again.',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -419,22 +460,38 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
     }
   };
 
+  const getStatusColorScheme = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return 'green';
+      case 'pending':
+        return 'orange';
+      case 'cancelled':
+        return 'red';
+      case 'completed':
+        return 'blue';
+      default:
+        return 'gray';
+    }
+  };
 
   if (loading) {
     return (
-      <Flex justify="center" align="center" minH="80vh">
+      <Flex justify="center" align="center" minH="80vh" bg={bgColor}>
         <Spinner size="xl" color="brand.500" />
-        <Text ml={4} fontSize="xl" color={textColorSecondary}>Loading analytics data...</Text>
+        <Text ml={4} fontSize="xl" color={textColorSecondary}>Loading analytics...</Text>
       </Flex>
     );
   }
 
+  const { totalCompletedAppointments, totalRevenue, averageAppointmentValue, timeSeriesData, servicePerformanceData, activeBarbersData, appointmentStatusDistributionData } = analyticsData;
+
   return (
-    <Box bg={bgColor} minH="100vh" py={10}>
-      <Container maxW="container.xl">
-        <Flex justify="space-between" align="center" mb={8} wrap="wrap">
+    <Box minH="100vh" bg={bgColor} fontFamily="body">
+      <Container as="main" maxW="6xl" p={8} my={12} bg={cardBg} rounded="lg" shadow="xl">
+        <Flex justifyContent="space-between" alignItems="center" mb={6} flexWrap="wrap">
           <Heading as="h1" size="xl" color={textColorPrimary} mb={{ base: 4, md: 0 }}>
-            Admin Reports
+            Admin Reports & Analytics
           </Heading>
           <Stack direction={{ base: 'column', md: 'row' }} spacing={4}>
             <Button colorScheme="brand" onClick={() => router.push('/barber-dashboard')}>
@@ -445,6 +502,11 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
             </Button>
           </Stack>
         </Flex>
+
+        {/* "As at" Date/Time */}
+        <Text fontSize="sm" color={textColorSecondary} textAlign="right" mb={4}>
+          As at: {asAtDateTime}
+        </Text>
 
         {/* Export Buttons */}
         <Flex justifyContent="flex-end" mb={6} gap={4}>
@@ -471,24 +533,14 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
         </Flex>
 
         {/* Main Analytics Content (assign ref here for PDF export) */}
-        <VStack
-          spacing={6}
-          align="stretch"
-          p={4}
-          bg={cardBg}
-          borderRadius="md"
-          shadow="md"
-          borderWidth="1px"
-          borderColor={borderColor}
-          ref={reportContentRef}
-        >
+        <VStack spacing={6} align="stretch" p={4} bg={cardBg} borderRadius="md" shadow="md" borderWidth="1px" borderColor={borderColor} ref={reportContentRef}>
           <Flex justify="space-between" align="center" wrap="wrap">
             <Heading as="h2" size="lg" color={textColorPrimary}>
               Business Analytics Overview
             </Heading>
             <Select
               value={selectedAnalyticsPeriod}
-              onChange={(e) => setSelectedAnalyticsPeriod(e.target.value as typeof selectedAnalyticsPeriod)}
+              onChange={(e: { target: { value: string; }; }) => setSelectedAnalyticsPeriod(e.target.value as typeof selectedAnalyticsPeriod)}
               width={{ base: '100%', md: '200px' }}
               bg={inputBg}
               borderColor={borderColor}
@@ -501,105 +553,113 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
             </Select>
           </Flex>
 
-          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
-            <StatCard title="Total Completed Appointments" value={analyticsData.totalCompletedAppointments} />
-            <StatCard title="Total Revenue" value={`E${analyticsData.totalRevenue.toFixed(2)}`} />
-            <StatCard title="Avg. Appointment Value" value={`E${analyticsData.averageAppointmentValue.toFixed(2)}`} />
-          </SimpleGrid>
-
-          <Divider borderColor={borderColor} />
-
-          {analyticsData.timeSeriesData.length > 0 || analyticsData.servicePerformanceData.length > 0 || analyticsData.activeBarbersData.length > 0 ? (
+          {totalCompletedAppointments > 0 || allAppointments.length > 0 ? ( // Adjusted condition to also show status distribution if appointments exist
             <>
-              {analyticsData.timeSeriesData.length > 0 && (
-                <>
-                  <Heading as="h3" size="md" color={textColorPrimary} mt={4} textAlign="center">
-                    Completed Appointments & Revenue Over Time ({selectedAnalyticsPeriod.charAt(0).toUpperCase() + selectedAnalyticsPeriod.slice(1)} View)
-                  </Heading>
-                  <Box height="400px" width="100%">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={analyticsData.timeSeriesData}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
-                        <XAxis dataKey="name" stroke={textColorSecondary} />
-                        <YAxis yAxisId="left" orientation="left" stroke={textColorSecondary} label={{ value: 'Appointments', angle: -90, position: 'insideLeft', fill: textColorSecondary }} />
-                        <YAxis yAxisId="right" orientation="right" stroke={textColorSecondary} label={{ value: 'Revenue (E)', angle: 90, position: 'insideRight', fill: textColorSecondary }} />
-                        <Tooltip
-                          contentStyle={{ backgroundColor: cardBg, borderColor: borderColor }}
-                          itemStyle={{ color: textColorPrimary }}
-                          labelStyle={{ color: textColorSecondary }}
-                          formatter={(value: number, name: string) => [`${name === 'revenue' ? 'E' : ''}${value.toFixed(name === 'revenue' ? 2 : 0)}`, name.charAt(0).toUpperCase() + name.slice(1)]}
-                        />
-                        <Legend />
-                        <Bar yAxisId="left" dataKey="completed" name="Completed Appointments" fill={COLORS[0]} />
-                        <Bar yAxisId="right" dataKey="revenue" name="Revenue" fill={COLORS[1]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </Box>
-                </>
-              )}
+              <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mt={4}>
+                <StatCard title="Total Completed Appointments" value={totalCompletedAppointments} />
+                <StatCard title="Total Revenue" value={`$${totalRevenue.toFixed(2)}`} />
+                <StatCard title="Avg. Appointment Value" value={`$${averageAppointmentValue.toFixed(2)}`} />
+              </SimpleGrid>
 
+              {/* Changed columns to always show 2 per line on medium and larger screens */}
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mt={6}>
-                {analyticsData.servicePerformanceData.length > 0 && (
-                  <VStack align="stretch" spacing={4} p={4} bg={cardBg} borderRadius="lg" boxShadow="md" borderWidth="1px" borderColor={borderColor}>
-                    <Heading as="h3" size="md" color={textColorPrimary} textAlign="center">
-                      Service Performance (Profitable Cuts)
-                    </Heading>
-                    <Box height="300px" width="100%">
+                {/* Time Series Chart */}
+                {timeSeriesData.length > 0 && (
+                  <VStack p={4} bg={cardBg} borderRadius="md" shadow="sm" borderWidth="1px" borderColor={borderColor} align="stretch">
+                    <Text fontSize="xl" fontWeight="semibold" mb={4} color={textColorPrimary}>Appointments & Revenue Over Time</Text>
+                    <Box h="300px" w="100%">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={analyticsData.servicePerformanceData}
-                          margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                          layout="vertical"
-                        >
+                        <BarChart data={timeSeriesData}>
                           <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
-                          <XAxis type="number" stroke={textColorSecondary} label={{ value: 'Value', position: 'insideBottom', offset: 0, fill: textColorSecondary }} />
-                          <YAxis type="category" dataKey="name" stroke={textColorSecondary} width={100} />
-                          <Tooltip
-                            contentStyle={{ backgroundColor: cardBg, borderColor: borderColor }}
-                            itemStyle={{ color: textColorPrimary }}
-                            labelStyle={{ color: textColorSecondary }}
-                            formatter={(value: number, name: string) => {
-                              if (name === 'count') return [`${value} appointments`, 'Completed Count'];
-                              if (name === 'totalRevenue') return [`E${value.toFixed(2)}`, 'Total Revenue'];
-                              return [value, name];
-                            }}
-                          />
+                          <XAxis dataKey="name" stroke={textColorSecondary} />
+                          <YAxis yAxisId="left" orientation="left" stroke={textColorSecondary} label={{ value: 'Appointments', angle: -90, position: 'insideLeft', fill: textColorSecondary }} />
+                          <YAxis yAxisId="right" orientation="right" stroke={textColorSecondary} label={{ value: 'Revenue ($)', angle: 90, position: 'insideRight', fill: textColorSecondary }} />
+                          <Tooltip contentStyle={{ backgroundColor: cardBg, borderColor: borderColor }} itemStyle={{ color: textColorPrimary }} labelStyle={{ color: textColorSecondary }} formatter={(value: number, name: string) => {
+                            if (name === 'revenue') return `$${value.toFixed(2)}`;
+                            return value;
+                          }} />
                           <Legend />
-                          <Bar dataKey="count" name="Completed Count" fill={COLORS[3]} />
-                          <Bar dataKey="totalRevenue" name="Total Revenue (E)" fill={COLORS[4]} />
+                          <Bar yAxisId="left" dataKey="completed" name="Completed Appointments" fill={COLORS[0]} />
+                          <Bar yAxisId="right" dataKey="revenue" name="Total Revenue" fill={COLORS[1]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </Box>
                   </VStack>
                 )}
 
-                {analyticsData.activeBarbersData.length > 0 && (
-                  <VStack align="stretch" spacing={4} p={4} bg={cardBg} borderRadius="lg" boxShadow="md" borderWidth="1px" borderColor={borderColor}>
-                    <Heading as="h3" size="md" color={textColorPrimary} textAlign="center">
-                      Most Active Barbers
-                    </Heading>
-                    <Box height="300px" width="100%">
+                {/* Service Performance Chart */}
+                {servicePerformanceData.length > 0 && (
+                  <VStack p={4} bg={cardBg} borderRadius="md" shadow="sm" borderWidth="1px" borderColor={borderColor} align="stretch">
+                    <Text fontSize="xl" fontWeight="semibold" mb={4} color={textColorPrimary}>Top Services by Revenue</Text>
+                    <Box h="300px" w="100%">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={analyticsData.activeBarbersData}
-                          layout="vertical"
-                          margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                        >
+                        <BarChart data={servicePerformanceData} layout="vertical">
                           <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
-                          <XAxis type="number" stroke={textColorSecondary} label={{ value: 'Appointments', position: 'insideBottom', offset: 0, fill: textColorSecondary }} />
-                          <YAxis type="category" dataKey="name" stroke={textColorSecondary} />
-                          <Tooltip
-                            contentStyle={{ backgroundColor: cardBg, borderColor: borderColor }}
-                            itemStyle={{ color: textColorPrimary }}
-                            labelStyle={{ color: textColorSecondary }}
-                            formatter={(value: number, name: string) => [`${value} appointments`, name]}
+                          <XAxis
+                            type="number"
+                            stroke={textColorSecondary}
+                            label={{ value: 'Revenue ($)', position: 'insideBottom', offset: 0, fill: textColorSecondary }}
+                            tickFormatter={(value: number) => `$${value.toFixed(0)}`}
                           />
+                          <YAxis type="category" dataKey="name" stroke={textColorSecondary} width={100} />
+                          <Tooltip contentStyle={{ backgroundColor: cardBg, borderColor: borderColor }} itemStyle={{ color: textColorPrimary }} labelStyle={{ color: textColorSecondary }} formatter={(value: number, name: string) => {
+                            if (name === 'totalRevenue') return [`$${value.toFixed(2)}`, 'Total Revenue'];
+                            if (name === 'count') return [value, 'Appointments Count'];
+                            return value;
+                          }} />
+                          <Legend />
+                          <Bar dataKey="totalRevenue" name="Total Revenue" fill={COLORS[2]} />
+                          <Bar dataKey="count" name="Appointments Count" fill={COLORS[3]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </Box>
+                  </VStack>
+                )}
+
+                {/* Active Barbers Chart */}
+                {activeBarbersData.length > 0 && (
+                  <VStack p={4} bg={cardBg} borderRadius="md" shadow="sm" borderWidth="1px" borderColor={borderColor} align="stretch">
+                    <Text fontSize="xl" fontWeight="semibold" mb={4} color={textColorPrimary}>Active Barbers by Appointments</Text>
+                    <Box h="300px" w="100%">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={activeBarbersData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
+                          <XAxis dataKey="name" stroke={textColorSecondary} />
+                          <YAxis type="number" stroke={textColorSecondary} label={{ value: 'Appointments', angle: -90, position: 'insideLeft', fill: textColorSecondary }} />
+                          <Tooltip contentStyle={{ backgroundColor: cardBg, borderColor: borderColor }} itemStyle={{ color: textColorPrimary }} labelStyle={{ color: textColorSecondary }} />
                           <Legend />
                           <Bar dataKey="value" name="Appointments" fill={COLORS[2]} />
                         </BarChart>
+                      </ResponsiveContainer>
+                    </Box>
+                  </VStack>
+                )}
+
+                {/* Appointment Status Distribution Pie Chart */}
+                {appointmentStatusDistributionData.length > 0 && (
+                  <VStack p={4} bg={cardBg} borderRadius="md" shadow="sm" borderWidth="1px" borderColor={borderColor} align="stretch">
+                    <Text fontSize="xl" fontWeight="semibold" mb={4} color={textColorPrimary}>Appointment Status Distribution</Text>
+                    <Box h="300px" w="100%">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={appointmentStatusDistributionData}
+                            dataKey="value"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={100}
+                            fill="#8884d8"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`} // Added nullish coalescing for 'percent'
+                          >
+                            {appointmentStatusDistributionData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip contentStyle={{ backgroundColor: cardBg, borderColor: borderColor }} itemStyle={{ color: textColorPrimary }} labelStyle={{ color: textColorSecondary }} formatter={(value: number, name: string) => [`${value} appointments`, name]} />
+                          <Legend />
+                        </PieChart>
                       </ResponsiveContainer>
                     </Box>
                   </VStack>
@@ -608,11 +668,74 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
             </>
           ) : (
             <Text color={textColorSecondary} textAlign="center" py={10} fontSize="lg">
-              No completed appointments data available for analytics yet.
+              No appointments data available for analytics yet.
             </Text>
           )}
+
+          {/* Past Appointments List displayed using Chakra Table */}
+          <Box mt={8}>
+            <Heading as="h3" size="md" color={textColorPrimary} mb={4}>
+              Past Appointments Overview
+            </Heading>
+            {pastAppointments.length > 0 ? (
+              <TableContainer
+                borderWidth="1px"
+                borderColor={borderColor}
+                borderRadius="md"
+                shadow="sm"
+                bg={appointmentCardBg}
+              >
+                <Table variant="simple" colorScheme="gray">
+                  <Thead>
+                    <Tr>
+                      <Th color={textColorSecondary}>Date & Time</Th>
+                      <Th color={textColorSecondary}>Service</Th>
+                      <Th color={textColorSecondary}>Barber</Th>
+                      <Th color={textColorSecondary}>Client</Th>
+                      <Th color={textColorSecondary}>Status</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {pastAppointments.map((appt) => (
+                      <Tr key={appt._id}>
+                        <Td color={textColorPrimary}>
+                          {format(parseISO(appt.dateTime), 'PPP p')}
+                        </Td>
+                        <Td color={textColorPrimary}>
+                          {appt.service?.name || 'N/A'}
+                        </Td>
+                        <Td color={textColorPrimary}>
+                          {appt.barber?.name || 'N/A'}
+                        </Td>
+                        <Td color={textColorPrimary}>
+                          {appt.customer?.name || 'N/A'}
+                        </Td>
+                        <Td>
+                          <Tag size="md" colorScheme={getStatusColorScheme(appt.status)}>
+                            {appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}
+                          </Tag>
+                        </Td>
+                      </Tr>
+                    ))}
+                  </Tbody>
+                </Table>
+              </TableContainer>
+            ) : (
+              <Text color={textColorSecondary} textAlign="center" py={5}>
+                No past appointments found.
+              </Text>
+            )}
+          </Box>
         </VStack>
       </Container>
+
+      {/* ClientAppointmentDetailModal */}
+      <ClientAppointmentDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={onDetailModalClose}
+        customer={selectedAppointment?.customer || null}
+        appointment={selectedAppointment}
+      />
     </Box>
   );
 }
@@ -644,7 +767,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value }) => {
       <Text fontSize="md" color={textColorSecondary} fontWeight="medium" textAlign="center">
         {title}
       </Text>
-      <Heading as="h4" size="lg" color={textColorPrimary} textAlign="center">
+      <Heading as="h4" size="lg" color={textColorPrimary}>
         {value}
       </Heading>
     </VStack>

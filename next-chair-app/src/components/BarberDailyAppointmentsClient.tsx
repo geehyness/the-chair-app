@@ -462,7 +462,7 @@ export default function BarberDailyAppointmentsClient({ barbers, services, today
             <Button colorScheme="brand" onClick={() => router.push('/')}>
               View Customer Site
             </Button>
-            <Button colorScheme="green" onClick={() => router.push('/admin-reports')}>
+            <Button colorScheme="green" onClick={() => router.push('/barber-dashboard/admin-reports')}>
               View Reports
             </Button>
             <Button colorScheme="purple" onClick={() => router.push('/barber-dashboard/manage')}>

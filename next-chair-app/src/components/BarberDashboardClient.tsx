@@ -478,7 +478,7 @@ export default function BarberDashboardClient({
             <Button colorScheme="brand" onClick={() => router.push('/')}>
               View Customer Site
             </Button>
-            <Button colorScheme="green" onClick={() => router.push('/admin-reports')}>
+            <Button colorScheme="green" onClick={() => router.push('/barber-dashboard/admin-reports')}>
               View Reports
             </Button>
             {/* New button to go back to the daily appointments view */}

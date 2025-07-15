@@ -20,7 +20,7 @@ export default function RootLayout({
   // const theme = useTheme(); // No longer explicitly needed here for footer colors, as Footer component handles it.
 
   // Determine Navbar type based on pathname
-  const isDashboardPage = pathname.startsWith('/barber-dashboard') || pathname.startsWith('/admin-reports');
+  const isDashboardPage = pathname.startsWith('/barber-dashboard') || pathname.startsWith('/barber-dashboard/admin-reports');
   const navbarType = isDashboardPage ? 'dashboard' : 'customer';
 
   // Example logout handler (implement actual logout logic)
