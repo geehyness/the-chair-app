@@ -1,0 +1,113 @@
+/* src/app/globals.css */
+/* Barber Pole with Double-Sized Stripes */
+
+.barber-pole-container {
+  position: relative;
+  width: 60px;
+  height: 150px;
+  margin: 0 auto;
+  filter: drop-shadow(0 0 5px rgba(0,0,0,0.2));
+}
+
+/* Main Pole with Double-Width Stripes */
+.barber-pole {
+  position: absolute;
+  width: 40px;
+  height: 120px;
+  left: 10px;
+  top: 20px;
+  border-radius: 4px;
+  overflow: hidden;
+  
+  /* Double-sized stripes (30px → 60px pattern) */
+  background: repeating-linear-gradient(
+    45deg,
+    #E53E3E 0px,       /* Red */
+    #E53E3E 30px,      /* Was 15px */
+    #FFFFFF 30px,      /* White */
+    #FFFFFF 60px,      /* Was 30px */
+    #326AA0 60px,      /* Blue */
+    #326AA0 90px       /* Was 45px */
+  );
+  background-size: 127.28px 127.28px; /* Was 63.64px (90px * √2 ≈ 127.28px) */
+  animation: barberPoleScroll 2.5s linear infinite;
+  border: 2px solid #222;
+}
+
+/* Adjusted animation for larger stripes */
+@keyframes barberPoleScroll {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 -127.28px; } /* Was -63.64px */
+}
+
+/* Mount/Ceiling (unchanged) */
+.barber-pole-mount {
+  position: absolute;
+  width: 60px;
+  height: 15px;
+  top: 0;
+  background: #444;
+  border-radius: 4px 4px 0 0;
+  border-bottom: 3px solid #666;
+}
+
+.barber-pole-ceiling {
+  position: absolute;
+  width: 80px;
+  height: 8px;
+  top: -8px;
+  left: -10px;
+  background: #444;
+  border-radius: 3px 3px 0 0;
+  transform: perspective(50px) rotateX(15deg);
+}
+
+/* Dark mode adjustments (unchanged) */
+[data-theme='dark'] .barber-pole-mount,
+[data-theme='dark'] .barber-pole-ceiling {
+  background: #fff;
+}
+
+[data-theme='dark'] .barber-pole-mount {
+  border-bottom-color: #fff;
+}
+
+
+
+
+
+/* Add to globals.css */
+@keyframes glitch {
+  0% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+  100% { transform: translate(0); }
+}
+
+.glitch-text {
+  position: relative;
+}
+
+.glitch-text::before,
+.glitch-text::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.glitch-text::before {
+  color: #f0f;
+  z-index: -1;
+  animation: glitch 0.3s linear infinite;
+}
+
+.glitch-text::after {
+  color: #0ff;
+  z-index: -2;
+  animation: glitch 0.3s linear reverse infinite;
+}
