@@ -1,4 +1,5 @@
-'use client'
+// src/components/HomePageClient.tsx
+'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -17,9 +18,11 @@ import {
   Icon,
   Divider,
   useTheme,
+  useToast, // Import useToast hook for notifications
   useDisclosure, // Import useDisclosure hook
   Tag, // For displaying availability days
   TagLabel,
+  Badge, // For service duration
 } from '@chakra-ui/react';
 import NextLink from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -27,9 +30,19 @@ import { FaCut, FaCalendarAlt, FaStar, FaChevronDown } from 'react-icons/fa'; //
 import { urlFor } from '@/lib/sanity';
 import { usePageTransition } from './PageTransitionProvider';
 import BarberProfileModal from './BarberProfileModal'; // Import the new modal component
+import { motion } from 'framer-motion'; // Import motion for animations
 
 // Import the interfaces from the server component to ensure type consistency
 import type { Barber, Service, SiteSettings } from '@/app/page';
+
+// Component for the Barber Pole (assuming it's a separate component or inline HTML/CSS)
+const BarberPole = () => (
+  <Box className="barber-pole-container" mb={8}>
+    <Box className="barber-pole-mount"></Box>
+    <Box className="barber-pole-ceiling"></Box>
+    <Box className="barber-pole"></Box>
+  </Box>
+);
 
 interface HomePageClientProps {
   barbers: Barber[];
@@ -37,10 +50,18 @@ interface HomePageClientProps {
   siteSettings: SiteSettings;
 }
 
+// Define Motion components for Framer Motion animations
+const MotionBox = motion(Box);
+const MotionHeading = motion(Heading);
+const MotionText = motion(Text);
+const MotionButton = motion(Button);
+const MotionFlex = motion(Flex);
+
 export default function HomePageClient({ barbers, services, siteSettings }: HomePageClientProps) {
   const theme = useTheme();
   const router = useRouter();
   const { startTransition, signalPageLoaded } = usePageTransition();
+  const toast = useToast(); // Initialize useToast
 
   // Ref for the section to scroll to
   const contentSectionRef = useRef<HTMLDivElement>(null);
@@ -54,12 +75,72 @@ export default function HomePageClient({ barbers, services, siteSettings }: Home
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null);
 
+  // PWA Install Prompt States
+  const [deferredPrompt, setDeferredPrompt] = useState<Event | null>(null);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
+
   // Effect to signal page loaded after hero image and all barber images are loaded
   useEffect(() => {
     if (heroImageLoaded && barberImagesLoadedCount === totalBarberImages) {
       signalPageLoaded();
     }
   }, [heroImageLoaded, barberImagesLoadedCount, totalBarberImages, signalPageLoaded]);
+
+  // PWA Install Prompt Logic
+  useEffect(() => {
+    // Check if the app is already installed (PWA)
+    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+      setIsAppInstalled(true);
+    }
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      setDeferredPrompt(e);
+      console.log('beforeinstallprompt event fired.');
+    };
+
+    const handleAppInstalled = () => {
+      setIsAppInstalled(true);
+      setDeferredPrompt(null); // Clear the deferred prompt once installed
+      toast({
+        title: 'App Installed!',
+        description: 'The Chair App has been added to your home screen.',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, [toast]); // Add toast to dependency array
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      // Show the install prompt
+      (deferredPrompt as any).prompt();
+      // Wait for the user to respond to the prompt
+      const { outcome } = await (deferredPrompt as any).userChoice;
+      console.log(`User response to the A2HS prompt: ${outcome}`);
+      // We no longer need the prompt. Clear it.
+      setDeferredPrompt(null);
+    } else {
+      toast({
+        title: 'Installation Not Available',
+        description: 'The browser is not ready to prompt for installation, or the app is already installed.',
+        status: 'info',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
 
   // Define colors using theme and useColorModeValue
   const bgPrimary = useColorModeValue(theme.colors.neutral.light['bg-primary'], theme.colors.neutral.dark['bg-primary']);
@@ -136,26 +217,69 @@ export default function HomePageClient({ barbers, services, siteSettings }: Home
         >
           <VStack spacing={4}>
             <br /><br />
-            <Heading as="h1" size={{ base: '2xl', md: '3xl', lg: '4xl' }} color="white">
+            <MotionHeading
+              as="h1"
+              size={{ base: '2xl', md: '3xl', lg: '4xl' }}
+              color="white"
+              className="glitch-text" // Apply glitch effect
+              data-text={siteSettings.title || "The Chair App"} // Data attribute for glitch effect
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
               {siteSettings.title || 'The Chair App'}
-            </Heading>
-            <Text fontSize={{ base: 'lg', md: 'xl' }} color="whiteAlpha.800" maxW="lg">
+            </MotionHeading>
+            <MotionText
+              fontSize={{ base: 'lg', md: 'xl' }}
+              color="whiteAlpha.800"
+              maxW="lg"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+            >
               {siteSettings.description || 'Your ultimate destination for premium barbering services.'}
-            </Text>
-            <Button
+            </MotionText>
+     {/*        <BarberPole /> Integrate the Barber Pole here */}
+
+            <MotionButton
               as={NextLink} // Use NextLink directly as the 'as' prop
               href="/book"
               size="lg"
               colorScheme="brand"
-              _hover={{ bg: useColorModeValue(theme.colors.brand['700'], theme.colors.brand['600']) }}
               onClick={(e) => {
                 e.preventDefault();
                 startTransition();
                 setTimeout(() => router.push('/book'), 400); // Navigate after animation starts
               }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.6 }}
+              boxShadow="lg"
+              whileHover={{ // Using Framer Motion's whileHover
+                backgroundColor: useColorModeValue(theme.colors.brand['700'], theme.colors.brand['600']),
+                boxShadow: "xl",
+                y: -2 // Framer Motion equivalent of translateY(-2px)
+              }}
             >
               Book Your Appointment
-            </Button>
+            </MotionButton>
+
+            {/* Install App Button */}
+            {!isAppInstalled && deferredPrompt && (
+              <MotionButton
+                onClick={handleInstallClick}
+                colorScheme="teal"
+                size="lg"
+                mt={4}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.8 }} // Slightly delayed animation
+                boxShadow="lg"
+                _hover={{ boxShadow: "xl", transform: "translateY(-2px)" }}
+              >
+                Install App
+              </MotionButton>
+            )}
 
 
             <Text fontSize={{ base: 'lg', md: 'xl' }} color="whiteAlpha.800" maxW="lg" marginTop={12}>
@@ -189,7 +313,7 @@ export default function HomePageClient({ barbers, services, siteSettings }: Home
           {services && services.length > 0 ? (
             <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={8}>
               {services.map((service) => (
-                <Flex
+                <MotionFlex // Changed from Flex to MotionFlex
                   key={service._id}
                   bg={cardBg}
                   p={6}
@@ -199,8 +323,11 @@ export default function HomePageClient({ barbers, services, siteSettings }: Home
                   borderColor={borderColor}
                   direction="column"
                   justify="space-between"
-                  _hover={{ transform: 'translateY(-5px)', boxShadow: 'lg' }}
-                  transition="all 0.2s ease-in-out"
+                  // Removed the duplicate transition prop here
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.4 }}
+                  whileHover={{ y: -5, boxShadow: 'xl' }} // Using Framer Motion's whileHover
                 >
                   {/* Service Image */}
                   {service.imageUrl && (
@@ -252,7 +379,7 @@ export default function HomePageClient({ barbers, services, siteSettings }: Home
                       Book Now
                     </Button>
                   </Flex>
-                </Flex>
+                </MotionFlex>
               ))}
             </SimpleGrid>
           ) : (
@@ -276,7 +403,7 @@ export default function HomePageClient({ barbers, services, siteSettings }: Home
               {barbers.map((barber) => {
                 const availableDays = getAvailableDays(barber.dailyAvailability);
                 return (
-                  <Box
+                  <MotionBox
                     key={barber._id}
                     bg={cardBg}
                     p={6}
@@ -284,8 +411,11 @@ export default function HomePageClient({ barbers, services, siteSettings }: Home
                     boxShadow="md"
                     borderWidth="1px"
                     borderColor={borderColor}
-                    _hover={{ transform: 'translateY(-5px)', boxShadow: 'lg' }}
-                    transition="all 0.2s ease-in-out"
+                    // Removed the duplicate transition prop here
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.4 }}
+                    whileHover={{ y: -5, boxShadow: 'xl' }} // Using Framer Motion's whileHover
                   >
                     {barber.image && (
                       <Image
@@ -338,7 +468,7 @@ export default function HomePageClient({ barbers, services, siteSettings }: Home
                         View Full Profile
                       </Button>
                     </Flex>
-                  </Box>
+                  </MotionBox>
                 );
               })}
             </SimpleGrid>

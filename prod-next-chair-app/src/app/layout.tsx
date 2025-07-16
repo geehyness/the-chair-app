@@ -23,7 +23,11 @@ interface SiteSettings {
 // Function to fetch site settings, specifically the logo
 async function getSiteSettings(): Promise<SiteSettings | null> {
   const query = groq`
-    *[_type == "siteSettings"][0]{\n      title,\n      logo\n    }\n  `;
+    *[_type == "siteSettings"][0]{
+      title,
+      logo
+    }
+  `;
   try {
     const settings = await client.fetch(query);
     return settings;
@@ -43,12 +47,6 @@ export default function RootLayout({
   // Determine if the current page is part of the dashboard/admin section
   const isDashboardPage = pathname.startsWith('/barber-dashboard') || pathname.startsWith('/barber-dashboard/admin-reports') || pathname.startsWith('/barber-dashboard/messages') || pathname.startsWith('/admin');
   const navbarType = isDashboardPage ? 'dashboard' : 'customer';
-
-  // The logout logic is now handled entirely within the Navbar component itself
-  // using the AuthContext. The onDashboardLogout prop is no longer needed.
-  // This empty function is just a placeholder if you had other layout-specific
-  // logout actions, but for now, it's safe to remove the prop from Navbar.
-  // const handleDashboardLogout = async () => { /* No longer needed */ };
 
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const [siteLogoUrl, setSiteLogoUrl] = useState<string | undefined>(undefined);
@@ -70,13 +68,18 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {/* PWA Manifest Link */}
+        <link rel="manifest" href="/manifest.json" />
+        {/* Apple Touch Icon (optional, for iOS home screen icon) */}
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        {/* Theme color for address bar on mobile browsers */}
+        <meta name="theme-color" content="#326AA0" />
       </head>
       <body>
         <Providers>
           <Navbar
             type={navbarType}
             appName={siteSettings?.title || "The Chair App"} // Use fetched title or default
-            // onDashboardLogout={handleDashboardLogout} // REMOVED: No longer needed
             siteLogoUrl={siteLogoUrl} // Pass the fetched logo URL to Navbar
           />
           {/* Add top padding to main content to account for fixed navbar height */}
