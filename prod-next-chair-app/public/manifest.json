@@ -1,6 +1,6 @@
 {
   "name": "The Chair App",
-  "short_name": "Chair App",
+  "short_name": "The Chair App",
   "description": "Salon booking made easy!",
   "start_url": "/",
   "display": "standalone",
