@@ -51,8 +51,6 @@ export async function POST(request: NextRequest) {
         console.log('Revalidated services overview page.');
     }
 
-    // Fallback: If no specific type match, revalidate a common path or all relevant ones
-    // You can remove this if your specific revalidate calls cover everything.
     revalidatePath('/barber-dashboard');
     revalidatePath('/barber-dashboard/manage');
 
