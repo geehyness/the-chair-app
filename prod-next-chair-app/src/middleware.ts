@@ -5,7 +5,7 @@ import type { NextRequest } from 'next/server';
 // Admin credentials loaded from environment variables
 // These are server-side variables, no NEXT_PUBLIC_ prefix needed
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@thechairapp'; // Fallback for development if not set
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'default_admin_password'; // Fallback, but should be set securely
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'TheChairAppAdmin!'; // Fallback, but should be set securely
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
