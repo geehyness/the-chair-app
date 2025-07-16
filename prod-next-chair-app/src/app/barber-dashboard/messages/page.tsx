@@ -22,6 +22,8 @@ export const metadata: Metadata = {
   description: 'Manage customer contact messages for The Chair App barbershop.',
 };
 
+export const revalidate = 60;
+
 async function getContactMessages(): Promise<Contact[]> {
   const query = groq`
     *[_type == "contact"] | order(sentAt desc) {

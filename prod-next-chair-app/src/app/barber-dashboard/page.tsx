@@ -29,6 +29,8 @@ export const metadata: Metadata = {
   description: 'Overview of all appointments for today and upcoming days across all barbers.',
 };
 
+export const revalidate = 60;
+
 // Function to fetch all barbers and today's appointments
 async function getDailyAppointmentsData(): Promise<{
   barbers: Barber[];

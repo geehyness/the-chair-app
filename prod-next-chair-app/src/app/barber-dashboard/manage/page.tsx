@@ -122,6 +122,8 @@ export interface SiteSettings {
   coverImageUrl?: string;
 }
 
+export const revalidate = 60;
+
 // Function to fetch all dashboard data
 async function getDashboardData() {
   const query = groq`

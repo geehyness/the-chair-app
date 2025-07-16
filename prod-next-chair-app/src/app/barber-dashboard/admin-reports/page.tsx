@@ -14,6 +14,8 @@ export const metadata: Metadata = {
   description: 'Detailed analytics and reports for the barber application.',
 };
 
+export const revalidate = 60;
+
 // Function to fetch all data needed for analytics
 async function getAnalyticsData(): Promise<{
   barbers: Barber[];
