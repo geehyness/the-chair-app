@@ -21,7 +21,7 @@ import {
   Checkbox, // Import Checkbox for account creation option
   useTheme, // Import useTheme hook
 } from '@chakra-ui/react';
-import { format, parseISO, addMinutes, isBefore, isAfter, isEqual, startOfDay, endOfDay, setHours, setMinutes, isToday } from 'date-fns'; // <--- ADDED isToday HERE
+import { format, parseISO, addMinutes, isBefore, isAfter, isEqual, startOfDay, endOfDay, setHours, setMinutes, isToday, addDays } from 'date-fns'; // <--- ADDED isToday HERE
 
 // Define TypeScript interfaces for props (ensure these match what's passed from page.tsx)
 interface DailyAvailability {
@@ -373,7 +373,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
               type="date"
               value={selectedDate}
               onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setSelectedDate(e.target.value)}
-              min={format(new Date(), 'yyyy-MM-dd')} // Prevent selecting past dates
+              min={format(addDays(new Date(), 1), 'yyyy-MM-dd')} // MODIFIED LINE
               bg={inputBg}
               borderColor={inputBorder}
               _placeholder={{ color: placeholderColor }}
