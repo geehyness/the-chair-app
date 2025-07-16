@@ -61,7 +61,7 @@ import {
   eachYearOfInterval,
   isWithinInterval,
   isValid,
-  isAfter,
+  isAfter, // Ensure isAfter is imported
   isBefore,
 } from 'date-fns';
 
@@ -195,9 +195,11 @@ export default function BarberDailyAppointmentsClient({
 
   const upcomingAppointmentsGrouped = useMemo(() => {
     const groupedByDate: { [date: string]: { [barberId: string]: Appointment[] } } = {};
+    const now = new Date(); // Get current date and time
 
     allAppointments
-      .filter(appt => !isToday(parseISO(appt.dateTime)))
+      // Filter appointments that are strictly in the future (after now)
+      .filter(appt => isAfter(parseISO(appt.dateTime), now))
       .forEach(appt => {
         const apptDate = format(parseISO(appt.dateTime), 'yyyy-MM-dd');
         if (!groupedByDate[apptDate]) {
@@ -211,10 +213,12 @@ export default function BarberDailyAppointmentsClient({
 
     for (const date in groupedByDate) {
       for (const barberId in groupedByDate[date]) {
+        // Sort appointments within each barber and date by time
         groupedByDate[date][barberId].sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
       }
     }
 
+    // Sort the dates themselves to ensure nearest date first
     const sortedDates = Object.keys(groupedByDate).sort((a, b) => parseISO(a).getTime() - parseISO(b).getTime());
 
     return { groupedByDate, sortedDates };
