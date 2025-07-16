@@ -28,23 +28,24 @@ import {
   Th,
   Td,
   TableContainer,
+  Input,
+  FormControl,
+  FormLabel,
 } from '@chakra-ui/react';
 import NextLink from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   format,
   parseISO,
-  startOfWeek,
-  endOfWeek,
-  startOfMonth,
-  endOfMonth,
-  startOfYear,
-  endOfYear,
+  isPast,
+  isValid,
+  isAfter,
+  isBefore,
+  isEqual,
   eachDayOfInterval,
   eachWeekOfInterval,
   eachMonthOfInterval,
   eachYearOfInterval,
-  isPast,
 } from 'date-fns';
 
 // Import Recharts components
@@ -57,9 +58,9 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  PieChart, // Added for Pie Chart
-  Pie,      // Added for Pie Chart
-  Cell,     // Added for Pie Chart
+  PieChart,
+  Pie,
+  Cell,
 } from 'recharts';
 
 // Import PDF and HTML to Canvas libraries
@@ -113,6 +114,12 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
   const [selectedAnalyticsPeriod, setSelectedAnalyticsPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
   const [asAtDateTime, setAsAtDateTime] = useState('');
 
+  // State variables for table filters
+  const [selectedBarberFilter, setSelectedBarberFilter] = useState<string>('all');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
+  const [startDateFilter, setStartDateFilter] = useState<string>('');
+  const [endDateFilter, setEndDateFilter] = useState<string>('');
+
   const reportContentRef = useRef<HTMLDivElement>(null);
 
   // Color mode values - Defined at the top level of the component
@@ -142,14 +149,41 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
     }
   }, [allAppointments, barbers, services]);
 
-  const pastAppointments = useMemo(() => {
-    return allAppointments
+  const statusColumns = useMemo(() => [
+    { id: 'pending', title: 'Pending', colorScheme: 'orange' },
+    { id: 'confirmed', title: 'Confirmed', colorScheme: 'green' },
+    { id: 'completed', title: 'Completed', colorScheme: 'blue' },
+    { id: 'cancelled', title: 'Cancelled', colorScheme: 'red' },
+  ], []);
+
+  const filteredPastAppointments = useMemo(() => {
+    let filtered = allAppointments
       .filter(appt => isPast(parseISO(appt.dateTime)))
       .sort((a, b) => parseISO(b.dateTime).getTime() - parseISO(a.dateTime).getTime());
-  }, [allAppointments]);
 
+    // Apply barber filter
+    if (selectedBarberFilter !== 'all') {
+      filtered = filtered.filter(appt => appt.barber._id === selectedBarberFilter);
+    }
 
-  // --- Analytics Logic ---
+    // Apply status filter
+    if (selectedStatusFilter !== 'all') {
+      filtered = filtered.filter(appt => appt.status === selectedStatusFilter);
+    }
+
+    // Apply date range filter
+    if (startDateFilter) {
+      const start = parseISO(startDateFilter);
+      filtered = filtered.filter(appt => isValid(start) && (isAfter(parseISO(appt.dateTime), start) || isEqual(parseISO(appt.dateTime), start)));
+    }
+    if (endDateFilter) {
+      const end = parseISO(endDateFilter);
+      filtered = filtered.filter(appt => isValid(end) && (isBefore(parseISO(appt.dateTime), end) || isEqual(parseISO(appt.dateTime), end)));
+    }
+
+    return filtered;
+  }, [allAppointments, selectedBarberFilter, selectedStatusFilter, startDateFilter, endDateFilter]);
+
   const analyticsData = useMemo(() => {
     if (loading) {
       return {
@@ -159,7 +193,7 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
         timeSeriesData: [],
         servicePerformanceData: [],
         activeBarbersData: [],
-        appointmentStatusDistributionData: [], // Added for pie chart
+        appointmentStatusDistributionData: [],
       };
     }
 
@@ -168,7 +202,7 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
     let timeSeriesMap: { [key: string]: { completed: number; revenue: number; } } = {};
     let servicePerformanceMap: { [serviceId: string]: { count: number; totalRevenue: number; } } = {};
     let activeBarbersMap: { [barberId: string]: number } = {};
-    let appointmentStatusMap: { [status: string]: number } = { // Added for pie chart
+    let appointmentStatusMap: { [status: string]: number } = {
       pending: 0,
       confirmed: 0,
       cancelled: 0,
@@ -188,13 +222,13 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
       const effectiveEndDate = new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate());
 
       if (selectedAnalyticsPeriod === 'daily') {
-        intervalDates = eachDayOfInterval({ start: startOfWeek(effectiveStartDate), end: endOfWeek(effectiveEndDate) });
+        intervalDates = eachDayOfInterval({ start: new Date(effectiveStartDate.getFullYear(), effectiveStartDate.getMonth(), effectiveStartDate.getDate() - 30), end: new Date() });
       } else if (selectedAnalyticsPeriod === 'weekly') {
-        intervalDates = eachWeekOfInterval({ start: startOfYear(effectiveStartDate), end: endOfYear(effectiveEndDate) });
+        intervalDates = eachWeekOfInterval({ start: new Date(effectiveStartDate.getFullYear(), effectiveStartDate.getMonth() - 6, 1), end: new Date() });
       } else if (selectedAnalyticsPeriod === 'monthly') {
-        intervalDates = eachMonthOfInterval({ start: startOfYear(effectiveStartDate), end: endOfYear(effectiveEndDate) });
+        intervalDates = eachMonthOfInterval({ start: new Date(effectiveStartDate.getFullYear() - 1, 0, 1), end: new Date() });
       } else if (selectedAnalyticsPeriod === 'yearly') {
-        intervalDates = eachYearOfInterval({ start: startOfYear(effectiveStartDate), end: endOfYear(effectiveEndDate) });
+        intervalDates = eachYearOfInterval({ start: new Date(effectiveStartDate.getFullYear() - 5, 0, 1), end: new Date() });
       }
     }
 
@@ -212,11 +246,12 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
       timeSeriesMap[key] = { completed: 0, revenue: 0 };
     });
 
-    allAppointments.forEach(appt => { // Iterate all appointments for status distribution
+
+    allAppointments.forEach(appt => {
       const apptDate = parseISO(appt.dateTime);
       const servicePrice = appt.service.price || 0;
 
-      // Update status distribution
+      // Update status distribution for ALL appointments
       if (appointmentStatusMap[appt.status] !== undefined) {
         appointmentStatusMap[appt.status]++;
       }
@@ -237,6 +272,7 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
           key = format(apptDate, 'yyyy');
         }
 
+        // Ensure key exists before incrementing
         if (!timeSeriesMap[key]) {
           timeSeriesMap[key] = { completed: 0, revenue: 0 };
         }
@@ -264,12 +300,14 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
       .sort((a, b) => {
         const getSortableDate = (key: string) => {
           if (selectedAnalyticsPeriod === 'daily') {
-            return parseISO(`${key} ${new Date().getFullYear()}`);
+            const currentYear = new Date().getFullYear();
+            return parseISO(`${key}, ${currentYear}`); // Assuming current year for daily
           }
           if (selectedAnalyticsPeriod === 'weekly') {
             const [weekStr, yearStr] = key.split(', ');
             const weekNum = parseInt(weekStr.replace('Week ', ''));
             const year = parseInt(yearStr);
+            // Get the first day of that week
             const d = new Date(year, 0, 1 + (weekNum - 1) * 7);
             return d;
           }
@@ -302,12 +340,12 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
       }))
       .sort((a, b) => b.value - a.value);
 
-    const appointmentStatusDistributionData = Object.keys(appointmentStatusMap) // Added for pie chart
+    const appointmentStatusDistributionData = Object.keys(appointmentStatusMap)
       .map(status => ({
         name: status.charAt(0).toUpperCase() + status.slice(1),
         value: appointmentStatusMap[status],
       }))
-      .filter(data => data.value > 0); // Only show statuses that have appointments
+      .filter(data => data.value > 0);
 
     const averageAppointmentValue = totalCompletedAppointments > 0 ? totalRevenue / totalCompletedAppointments : 0;
 
@@ -318,7 +356,7 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
       timeSeriesData,
       servicePerformanceData,
       activeBarbersData,
-      appointmentStatusDistributionData, // Added for pie chart
+      appointmentStatusDistributionData,
     };
   }, [allAppointments, selectedAnalyticsPeriod, loading, services, barbers]);
 
@@ -352,7 +390,7 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
         csvContent += `${data.name},${data.value}\n`;
       });
 
-      csvContent += "\nAppointment Status Distribution\n"; // Added for pie chart
+      csvContent += "\nAppointment Status Distribution\n";
       csvContent += "Status,Count\n";
       appointmentStatusDistributionData.forEach(data => {
         csvContent += `${data.name},${data.value}\n`;
@@ -553,7 +591,7 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
             </Select>
           </Flex>
 
-          {totalCompletedAppointments > 0 || allAppointments.length > 0 ? ( // Adjusted condition to also show status distribution if appointments exist
+          {totalCompletedAppointments > 0 || allAppointments.length > 0 ? (
             <>
               <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} mt={4}>
                 <StatCard title="Total Completed Appointments" value={totalCompletedAppointments} />
@@ -561,9 +599,7 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
                 <StatCard title="Avg. Appointment Value" value={`$${averageAppointmentValue.toFixed(2)}`} />
               </SimpleGrid>
 
-              {/* Changed columns to always show 2 per line on medium and larger screens */}
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6} mt={6}>
-                {/* Time Series Chart */}
                 {timeSeriesData.length > 0 && (
                   <VStack p={4} bg={cardBg} borderRadius="md" shadow="sm" borderWidth="1px" borderColor={borderColor} align="stretch">
                     <Text fontSize="xl" fontWeight="semibold" mb={4} color={textColorPrimary}>Appointments & Revenue Over Time</Text>
@@ -587,7 +623,6 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
                   </VStack>
                 )}
 
-                {/* Service Performance Chart */}
                 {servicePerformanceData.length > 0 && (
                   <VStack p={4} bg={cardBg} borderRadius="md" shadow="sm" borderWidth="1px" borderColor={borderColor} align="stretch">
                     <Text fontSize="xl" fontWeight="semibold" mb={4} color={textColorPrimary}>Top Services by Revenue</Text>
@@ -616,7 +651,6 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
                   </VStack>
                 )}
 
-                {/* Active Barbers Chart */}
                 {activeBarbersData.length > 0 && (
                   <VStack p={4} bg={cardBg} borderRadius="md" shadow="sm" borderWidth="1px" borderColor={borderColor} align="stretch">
                     <Text fontSize="xl" fontWeight="semibold" mb={4} color={textColorPrimary}>Active Barbers by Appointments</Text>
@@ -635,7 +669,6 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
                   </VStack>
                 )}
 
-                {/* Appointment Status Distribution Pie Chart */}
                 {appointmentStatusDistributionData.length > 0 && (
                   <VStack p={4} bg={cardBg} borderRadius="md" shadow="sm" borderWidth="1px" borderColor={borderColor} align="stretch">
                     <Text fontSize="xl" fontWeight="semibold" mb={4} color={textColorPrimary}>Appointment Status Distribution</Text>
@@ -651,7 +684,7 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
                             outerRadius={100}
                             fill="#8884d8"
                             labelLine={false}
-                            label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`} // Added nullish coalescing for 'percent'
+                            label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
                           >
                             {appointmentStatusDistributionData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -677,7 +710,88 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
             <Heading as="h3" size="md" color={textColorPrimary} mb={4}>
               Past Appointments Overview
             </Heading>
-            {pastAppointments.length > 0 ? (
+            {/* Filter controls for the table */}
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4} mb={6}> {/* MODIFIED: Added lg: 3 */}
+              <FormControl>
+                <FormLabel color={textColorPrimary}>Filter by Barber:</FormLabel>
+                <Select
+                  value={selectedBarberFilter}
+                  onChange={(e) => setSelectedBarberFilter(e.target.value)}
+                  bg={inputBg}
+                  borderColor={borderColor}
+                  color={textColorPrimary}
+                >
+                  <option value="all">All Barbers</option>
+                  {barbers.map(barber => (
+                    <option key={barber._id} value={barber._id}>{barber.name}</option>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl>
+                <FormLabel color={textColorPrimary}>Filter by Status:</FormLabel>
+                <Select
+                  value={selectedStatusFilter}
+                  onChange={(e) => setSelectedStatusFilter(e.target.value)}
+                  bg={inputBg}
+                  borderColor={borderColor}
+                  color={textColorPrimary}
+                >
+                  <option value="all">All Statuses</option>
+                  {statusColumns.map(status => (
+                    <option key={status.id} value={status.id}>{status.title}</option>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <HStack spacing={4} flexWrap="wrap"> {/* MODIFIED: Added flexWrap="wrap" */}
+                <FormControl flex="1"> {/* ADDED: flex="1" */}
+                  <FormLabel color={textColorPrimary}>Start Date:</FormLabel>
+                  <Input
+                    type="date"
+                    value={startDateFilter}
+                    onChange={(e) => {
+                      const newStartDate = e.target.value;
+                      setStartDateFilter(newStartDate);
+                      if (endDateFilter && newStartDate) {
+                        const parsedNewStartDate = parseISO(newStartDate);
+                        const parsedEndDate = parseISO(endDateFilter);
+                        if (isValid(parsedNewStartDate) && isValid(parsedEndDate) && isAfter(parsedNewStartDate, parsedEndDate)) {
+                          setEndDateFilter('');
+                        }
+                      }
+                    }}
+                    bg={inputBg}
+                    borderColor={borderColor}
+                    color={textColorPrimary}
+                  />
+                </FormControl>
+                <FormControl flex="1"> {/* ADDED: flex="1" */}
+                  <FormLabel color={textColorPrimary}>End Date:</FormLabel>
+                  <Input
+                    type="date"
+                    value={endDateFilter}
+                    onChange={(e) => {
+                      const newEndDate = e.target.value;
+                      setEndDateFilter(newEndDate);
+                      if (startDateFilter && newEndDate) {
+                        const parsedNewEndDate = parseISO(newEndDate);
+                        const parsedStartDate = parseISO(startDateFilter);
+                        if (isValid(parsedNewEndDate) && isValid(parsedStartDate) && isBefore(parsedNewEndDate, parsedStartDate)) {
+                          setStartDateFilter('');
+                        }
+                      }
+                    }}
+                    bg={inputBg}
+                    borderColor={borderColor}
+                    color={textColorPrimary}
+                  />
+                </FormControl>
+              </HStack>
+            </SimpleGrid>
+
+            {/* Use filteredPastAppointments for the table data */}
+            {filteredPastAppointments.length > 0 ? (
               <TableContainer
                 borderWidth="1px"
                 borderColor={borderColor}
@@ -693,10 +807,11 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
                       <Th color={textColorSecondary}>Barber</Th>
                       <Th color={textColorSecondary}>Client</Th>
                       <Th color={textColorSecondary}>Status</Th>
+                      <Th color={textColorSecondary}>Actions</Th>
                     </Tr>
                   </Thead>
                   <Tbody>
-                    {pastAppointments.map((appt) => (
+                    {filteredPastAppointments.map((appt) => (
                       <Tr key={appt._id}>
                         <Td color={textColorPrimary}>
                           {format(parseISO(appt.dateTime), 'PPP p')}
@@ -715,6 +830,16 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
                             {appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}
                           </Tag>
                         </Td>
+                        <Td>
+                          <Button
+                            size="sm"
+                            colorScheme="brand"
+                            variant="outline"
+                            onClick={() => handleViewDetails(appt)}
+                          >
+                            View Details
+                          </Button>
+                        </Td>
                       </Tr>
                     ))}
                   </Tbody>
@@ -722,7 +847,7 @@ export default function AdminReportsClient({ barbers, services, allAppointments 
               </TableContainer>
             ) : (
               <Text color={textColorSecondary} textAlign="center" py={5}>
-                No past appointments found.
+                No past appointments found matching the selected filters.
               </Text>
             )}
           </Box>

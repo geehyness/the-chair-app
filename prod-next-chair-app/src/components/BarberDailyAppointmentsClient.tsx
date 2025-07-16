@@ -1,5 +1,5 @@
 // src/components/BarberDailyAppointmentsClient.tsx
-'use client'; // This must be the very first line in the file
+'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import {
@@ -60,12 +60,11 @@ import {
   eachMonthOfInterval,
   eachYearOfInterval,
   isWithinInterval,
-  isValid, // Import isValid to check for valid dates
-  isAfter, // Import isAfter for date comparison
-  isBefore, // Import isBefore for date comparison
+  isValid,
+  isAfter,
+  isBefore,
 } from 'date-fns';
 
-// Import Recharts components
 import {
   BarChart,
   Bar,
@@ -110,6 +109,7 @@ interface BarberDailyAppointmentsClientProps {
   services: Service[];
   todayAppointments: Appointment[];
   upcomingAppointments: Appointment[];
+  allAppointments: Appointment[]; // ADDED: New prop for all appointments
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#d0ed57', '#a4de6c', '#8dd1e1'];
@@ -120,12 +120,13 @@ export default function BarberDailyAppointmentsClient({
   services,
   todayAppointments: initialTodayAppointments,
   upcomingAppointments: initialUpcomingAppointments,
+  allAppointments: initialAllAppointments, // MODIFIED: Receive allAppointments prop
 }: BarberDailyAppointmentsClientProps) {
   const theme = useTheme();
   const router = useRouter();
   const toast = useToast();
 
-  const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
+  const [allAppointments, setAllAppointments] = useState<Appointment[]>(initialAllAppointments); // MODIFIED: Initialize state with prop
   const [loading, setLoading] = useState(true);
   const [selectedAnalyticsPeriod, setSelectedAnalyticsPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
 
@@ -154,11 +155,14 @@ export default function BarberDailyAppointmentsClient({
   const trHoverBg = useColorModeValue('gray.50', 'gray.700');
 
 
+  // REMOVED: The useEffect that combined todayAppointments and upcomingAppointments
   useEffect(() => {
-    const combinedAppointments = [...initialTodayAppointments, ...initialUpcomingAppointments];
-    setAllAppointments(combinedAppointments);
-    setLoading(false);
-  }, [initialTodayAppointments, initialUpcomingAppointments]);
+    // If you need to re-initialize allAppointments based on prop changes, you can add
+    // a more specific useEffect here:
+    // setAllAppointments(initialAllAppointments);
+    setLoading(false); // Set loading to false once initial data is used
+  }, [initialAllAppointments]); // MODIFIED: Depend only on initialAllAppointments if needed for updates
+
 
   const statusColumns = useMemo(() => [
     { id: 'pending', title: 'Pending', colorScheme: 'orange' },
@@ -166,7 +170,7 @@ export default function BarberDailyAppointmentsClient({
     { id: 'completed', title: 'Completed', colorScheme: 'blue' },
     { id: 'cancelled', title: 'Cancelled', colorScheme: 'red' },
   ], []);
-
+  
   const todayAppointmentsGroupedByStatus = useMemo(() => {
     const grouped: { [status: string]: Appointment[] } = {
       pending: [],

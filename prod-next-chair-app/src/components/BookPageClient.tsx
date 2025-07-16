@@ -1,5 +1,5 @@
 // src/components/BookPageClient.tsx
-'use client' // This directive marks this as a Client Component
+'use client'
 
 import React from 'react';
 import NextLink from 'next/link';
@@ -11,11 +11,10 @@ import {
   Link,
   Container,
   useColorModeValue,
-  useTheme, // Import useTheme
+  useTheme,
 } from '@chakra-ui/react';
-import BookingForm from '@/components/BookingForm'; // Client component for the form
+import BookingForm from '@/components/BookingForm';
 
-// Import interfaces from the server component to ensure type consistency
 import type { Barber, Service } from '@/app/book/page';
 
 interface BookPageClientProps {
@@ -24,13 +23,14 @@ interface BookPageClientProps {
 }
 
 export default function BookPageClient({ barbers, services }: BookPageClientProps) {
-  const theme = useTheme(); // Use useTheme hook here
+  const theme = useTheme();
 
+  // These are already correctly themed
   const headerBg = useColorModeValue(theme.colors.neutral.light['bg-header'], theme.colors.neutral.dark['bg-header']);
   const headerColor = useColorModeValue(theme.colors.neutral.light['text-header'], theme.colors.neutral.dark['text-header']);
-  const mainBg = useColorModeValue(theme.colors.neutral.light['bg-card'], theme.colors.neutral.dark['bg-card']); // Using bg-card for main container
+  const mainBg = useColorModeValue(theme.colors.neutral.light['bg-card'], theme.colors.neutral.dark['bg-card']);
   const headingColor = useColorModeValue(theme.colors.neutral.light['text-primary'], theme.colors.neutral.dark['text-primary']);
-  const footerBg = useColorModeValue(theme.colors.neutral.light['bg-secondary'], theme.colors.neutral.dark['bg-secondary']); // Using bg-secondary for footer
+  const footerBg = useColorModeValue(theme.colors.neutral.light['bg-secondary'], theme.colors.neutral.dark['bg-secondary']);
   const footerText = useColorModeValue(theme.colors.neutral.light['text-secondary'], theme.colors.neutral.dark['text-secondary']);
 
   return (
@@ -41,8 +41,6 @@ export default function BookPageClient({ barbers, services }: BookPageClientProp
         </Heading>
         <BookingForm barbers={barbers} services={services} />
       </Container>
-
-      
     </Box>
   );
 }

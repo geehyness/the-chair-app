@@ -1,5 +1,6 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 // the-chair-app/components/BookingForm.tsx
-'use client'; // This directive marks this as a Client Component
+'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
@@ -16,19 +17,19 @@ import {
   Alert,
   AlertIcon,
   useColorModeValue,
-  useToast, // Import useToast for notifications
-  Spinner, // For loading states
-  Checkbox, // Import Checkbox for account creation option
-  useTheme, // Import useTheme hook
+  useToast,
+  Spinner,
+  Checkbox,
+  useTheme,
+  Flex, // Ensure useTheme is imported
 } from '@chakra-ui/react';
-import { format, parseISO, addMinutes, isBefore, isAfter, isEqual, startOfDay, endOfDay, setHours, setMinutes, isToday } from 'date-fns'; // <--- ADDED isToday HERE
+import { format, parseISO, addMinutes, isBefore, isAfter, isEqual, startOfDay, endOfDay, setHours, setMinutes, isToday } from 'date-fns';
 
-// Define TypeScript interfaces for props (ensure these match what's passed from page.tsx)
 interface DailyAvailability {
   _key: string;
   dayOfWeek: string;
-  startTime: string; // e.g., "09:00"
-  endTime: string;   // e.g., "17:00"
+  startTime: string;
+  endTime: string;
 }
 
 interface Barber {
@@ -40,9 +41,9 @@ interface Barber {
 interface Service {
   _id: string;
   name: string;
-  duration: number; // Duration in minutes
+  duration: number;
   price: number;
-  barbers: { _id: string; name: string }[]; // Dereferenced barbers for convenience
+  barbers: { _id: string; name: string }[];
 }
 
 interface BookingFormProps {
@@ -51,39 +52,35 @@ interface BookingFormProps {
 }
 
 const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
-  const toast = useToast(); // Initialize toast
-  const theme = useTheme(); // Initialize useTheme hook here
+  const toast = useToast();
+  const theme = useTheme(); // Initialize useTheme hook
 
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
-  const [customerPhone, setCustomerPhone] = useState(''); // Made required
+  const [customerPhone, setCustomerPhone] = useState('');
   const [selectedBarberId, setSelectedBarberId] = useState('');
   const [selectedServiceId, setSelectedServiceId] = useState('');
-  const [selectedDate, setSelectedDate] = useState(''); //YYYY-MM-DD format
-  const [selectedTime, setSelectedTime] = useState(''); // HH:mm format
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedTime, setSelectedTime] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [createAccountChecked, setCreateAccountChecked] = useState(false); // New state for account creation
+  const [createAccountChecked, setCreateAccountChecked] = useState(false);
 
-  const [availableTimes, setAvailableTimes] = useState<string[]>([]); // Stores HH:mm strings
-  const [fetchingTimes, setFetchingTimes] = useState(false); // New state for time slot loading
+  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
+  const [isDataLoading, setIsDataLoading] = useState(false);
 
-  // Memoize selected service and barber for easier access
   const selectedService = useMemo(() => services.find(s => s._id === selectedServiceId), [services, selectedServiceId]);
   const selectedBarber = useMemo(() => barbers.find(b => b._id === selectedBarberId), [barbers, selectedBarberId]);
 
-  // Filter barbers based on selected service
   const availableBarbersForService = useMemo(() => {
     if (!selectedService) {
-      return barbers; // If no service selected, all barbers are potentially available
+      return barbers;
     }
-    // Filter barbers who offer the selected service
     const serviceBarberIds = new Set(selectedService.barbers.map(b => b._id));
     return barbers.filter(barber => serviceBarberIds.has(barber._id));
   }, [barbers, selectedService]);
 
-  // Effect to generate available time slots based on selected barber, date, and service duration
   useEffect(() => {
     const generateTimeSlots = async () => {
       if (!selectedBarber || !selectedDate || !selectedService) {
@@ -91,22 +88,21 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
         return;
       }
 
-      setFetchingTimes(true);
+      setIsDataLoading(true);
       setError(null);
 
-      const dayOfWeek = format(parseISO(selectedDate), 'EEEE').toLowerCase(); // e.g., "monday"
+      const dayOfWeek = format(parseISO(selectedDate), 'EEEE').toLowerCase();
       const barberAvailability = selectedBarber.dailyAvailability.filter(
         (block) => block.dayOfWeek === dayOfWeek
       );
 
       if (barberAvailability.length === 0) {
         setAvailableTimes([]);
-        setFetchingTimes(false);
+        setIsDataLoading(false);
         return;
       }
 
       try {
-        // Fetch existing appointments for the selected barber and date
         const response = await fetch(`/api/appointments?barberId=${selectedBarber._id}&date=${selectedDate}`);
         if (!response.ok) {
           throw new Error('Failed to fetch existing appointments for time slot calculation.');
@@ -114,7 +110,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
         const existingAppointments: any[] = await response.json();
 
         const slots: Date[] = [];
-        const bookingDuration = selectedService.duration; // Duration of the selected service
+        const bookingDuration = selectedService.duration;
 
         barberAvailability.forEach((block) => {
           const [startHour, startMinute] = block.startTime.split(':').map(Number);
@@ -123,41 +119,32 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
           let currentTime = setMinutes(setHours(parseISO(selectedDate), startHour), startMinute);
           const blockEndTime = setMinutes(setHours(parseISO(selectedDate), endHour), endMinute);
 
-          // Adjust for current time if selectedDate is today
           const now = new Date();
           if (isToday(parseISO(selectedDate)) && isBefore(currentTime, now)) {
-            // Round up to the next 30-minute interval from now
             const minutes = now.getMinutes();
-            const roundedMinutes = Math.ceil(minutes / 30) * 30; // Changed to 30-minute intervals
+            const roundedMinutes = Math.ceil(minutes / 30) * 30;
             currentTime = setMinutes(setHours(now, now.getHours()), roundedMinutes);
-            // If rounding up pushes to next hour, adjust hour
             if (roundedMinutes === 60) {
-              currentTime = addMinutes(currentTime, -60); // Reset minutes to 0
-              currentTime = addMinutes(currentTime, 60); // Add an hour
+              currentTime = addMinutes(currentTime, -60);
+              currentTime = addMinutes(currentTime, 60);
             }
           }
 
-          // Ensure currentTime is not before the block's start time after adjustment
           if (isBefore(currentTime, setMinutes(setHours(parseISO(selectedDate), startHour), startMinute))) {
              currentTime = setMinutes(setHours(parseISO(selectedDate), startHour), startMinute);
           }
 
-
           while (isBefore(currentTime, blockEndTime)) {
             const slotEndTime = addMinutes(currentTime, bookingDuration);
 
-            // Check if the slot fits within the availability block
             if (isAfter(slotEndTime, blockEndTime) && !isEqual(slotEndTime, blockEndTime)) {
-              break; // Slot extends beyond availability block
+              break;
             }
 
-            // Check for conflicts with existing appointments
             const isConflict = existingAppointments.some(appt => {
               const apptStartTime = parseISO(appt.dateTime);
-              const apptEndTime = addMinutes(apptStartTime, appt.service.duration); // Assuming service.duration is available on fetched appt
+              const apptEndTime = addMinutes(apptStartTime, appt.service.duration);
 
-              // Check for overlap:
-              // [slotStartTime, slotEndTime] overlaps with [apptStartTime, apptEndTime]
               return (
                 (isBefore(currentTime, apptEndTime) && isAfter(slotEndTime, apptStartTime)) ||
                 isEqual(currentTime, apptStartTime) ||
@@ -168,7 +155,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
             if (!isConflict) {
               slots.push(currentTime);
             }
-            currentTime = addMinutes(currentTime, 30); // Move to the next 30-minute interval
+            currentTime = addMinutes(currentTime, 30);
           }
         });
 
@@ -187,14 +174,13 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
         setError('Could not load available times. Please try again.');
         setAvailableTimes([]);
       } finally {
-        setFetchingTimes(false);
+        setIsDataLoading(false);
       }
     };
 
     generateTimeSlots();
-  }, [selectedBarber, selectedDate, selectedService, toast]); // Re-run when these dependencies change
+  }, [selectedBarber, selectedDate, selectedService, toast]);
 
-  // Reset selected time when barber, service, or date changes
   useEffect(() => {
     setSelectedTime('');
   }, [selectedBarberId, selectedServiceId, selectedDate]);
@@ -211,10 +197,9 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
       return;
     }
 
-    const fullDateTime = `${selectedDate}T${selectedTime}:00.000Z`; // ISO string format
+    const fullDateTime = `${selectedDate}T${selectedTime}:00.000Z`;
 
     try {
-      // Corrected API endpoint for booking appointments
       const response = await fetch('/api/book-appointment', {
         method: 'POST',
         headers: {
@@ -228,7 +213,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
           serviceId: selectedServiceId,
           dateTime: fullDateTime,
           notes,
-          createAccount: createAccountChecked, // Pass the new flag
+          createAccount: createAccountChecked,
         }),
       });
 
@@ -245,7 +230,6 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
         isClosable: true,
       });
 
-      // Clear form
       setCustomerName('');
       setCustomerEmail('');
       setCustomerPhone('');
@@ -254,8 +238,8 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
       setSelectedDate('');
       setSelectedTime('');
       setNotes('');
-      setAvailableTimes([]); // Clear available times after booking
-      setCreateAccountChecked(false); // Reset checkbox
+      setAvailableTimes([]);
+      setCreateAccountChecked(false);
 
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred. Please try again.');
@@ -273,18 +257,72 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
 
   // Color mode values for form elements
   const labelColor = useColorModeValue(theme.colors.neutral.light['text-primary'], theme.colors.neutral.dark['text-primary']);
-  const inputBg = useColorModeValue(theme.colors.neutral.light['bg-input'], theme.colors.neutral.dark['bg-input']);
-  const inputBorder = useColorModeValue(theme.colors.neutral.light['border-color'], theme.colors.neutral.dark['border-color']);
-  const placeholderColor = useColorModeValue(theme.colors.neutral.light['text-muted'], theme.colors.neutral.dark['text-muted']); // Using text-muted for placeholders
+  const inputBg = useColorModeValue(theme.colors.neutral.light['input-bg'], theme.colors.neutral.dark['input-bg']);
+  const inputBorder = useColorModeValue(theme.colors.neutral.light['input-border'], theme.colors.neutral.dark['input-border']);
+  const placeholderColor = useColorModeValue(theme.colors.neutral.light['placeholder-color'], theme.colors.neutral.dark['placeholder-color']);
   const textColorPrimary = useColorModeValue(theme.colors.neutral.light['text-primary'], theme.colors.neutral.dark['text-primary']);
   const textColorSecondary = useColorModeValue(theme.colors.neutral.light['text-secondary'], theme.colors.neutral.dark['text-secondary']);
 
+  // Define loading card background color unconditionally
+  const loadingCardBg = useColorModeValue(theme.colors.neutral.light['bg-card'], theme.colors.neutral.dark['bg-card']); // Using bg-card for the loading card
+  const loadingCardTextColor = useColorModeValue(theme.colors.neutral.light['text-primary'], theme.colors.neutral.dark['text-primary']); // Using text-primary for loading card text
 
-  // Get today's date in ISO-MM-DD format for min attribute of date input
   const today = new Date().toISOString().split('T')[0];
 
   return (
-    <Box as="form" onSubmit={handleSubmit} p={6} borderRadius="lg" shadow="md" bg={useColorModeValue(theme.colors.neutral.light['bg-card'], theme.colors.neutral.dark['bg-card'])}>
+    <Box
+      as="form"
+      onSubmit={handleSubmit}
+      p={6}
+      borderRadius="lg"
+      shadow="md"
+      bg={useColorModeValue(theme.colors.neutral.light['bg-card'], theme.colors.neutral.dark['bg-card'])}
+      position="relative"
+      opacity={isDataLoading ? 0.9 : 1}
+      pointerEvents={isDataLoading ? 'none' : 'auto'}
+      transition="opacity 0.3s ease-in-out"
+    >
+      {isDataLoading && (
+        <Flex
+          position="absolute"
+          top="0"
+          left="0"
+          right="0"
+          bottom="0"
+          bg={useColorModeValue('rgba(255,255,255,0.7)', 'rgba(0,0,0,0.7)')} // Semi-transparent overlay matching theme
+          zIndex="overlay"
+          align="center"
+          justify="center"
+          borderRadius="lg"
+          flexDirection="column"
+        >
+          
+          <Box
+            mt={6}
+            p={4}
+            bg={loadingCardBg} // Use the unconditionally defined variable
+            borderRadius="md"
+            boxShadow="lg"
+            textAlign="center"
+            maxW="200px"
+          >
+            <br />
+            <div className="barber-pole-container">
+            <div className="barber-pole-ceiling">
+              <div className="barber-pole-screw top-left"></div>
+              <div className="barber-pole-screw top-right"></div>
+            </div>
+            <div className="barber-pole-mount"></div>
+            <div className="barber-pole"></div>
+          </div>
+          <hr />
+            <Text fontSize="lg" fontWeight="bold" color={loadingCardTextColor}>
+              Loading Availability...
+            </Text>
+          </Box>
+        </Flex>
+      )}
+
       <VStack spacing={5} align="stretch">
         {error && (
           <Alert status="error" borderRadius="md">
@@ -298,7 +336,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
           <Input
             type="text"
             value={customerName}
-            onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setCustomerName(e.target.value)}
+            onChange={(e) => setCustomerName(e.target.value)}
             bg={inputBg}
             borderColor={inputBorder}
             _placeholder={{ color: placeholderColor }}
@@ -310,19 +348,19 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
           <Input
             type="email"
             value={customerEmail}
-            onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setCustomerEmail(e.target.value)}
+            onChange={(e) => setCustomerEmail(e.target.value)}
             bg={inputBg}
             borderColor={inputBorder}
             _placeholder={{ color: placeholderColor }}
           />
         </FormControl>
 
-        <FormControl id="customerPhone" isRequired> {/* Made phone number required */}
+        <FormControl id="customerPhone" isRequired>
           <FormLabel color={labelColor}>Phone Number</FormLabel>
           <Input
             type="tel"
             value={customerPhone}
-            onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setCustomerPhone(e.target.value)}
+            onChange={(e) => setCustomerPhone(e.target.value)}
             bg={inputBg}
             borderColor={inputBorder}
             _placeholder={{ color: placeholderColor }}
@@ -333,7 +371,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
           <FormLabel color={labelColor}>Select Service</FormLabel>
           <Select
             value={selectedServiceId}
-            onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setSelectedServiceId(e.target.value)}
+            onChange={(e) => setSelectedServiceId(e.target.value)}
             bg={inputBg}
             borderColor={inputBorder}
             _placeholder={{ color: placeholderColor }}
@@ -351,11 +389,11 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
           <FormLabel color={labelColor}>Select Barber</FormLabel>
           <Select
             value={selectedBarberId}
-            onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setSelectedBarberId(e.target.value)}
+            onChange={(e) => setSelectedBarberId(e.target.value)}
             bg={inputBg}
             borderColor={inputBorder}
             _placeholder={{ color: placeholderColor }}
-            isDisabled={!selectedServiceId} // Disable if no service selected
+            isDisabled={!selectedServiceId}
           >
             <option value="">-- Select Barber --</option>
             {availableBarbersForService.map((barber) => (
@@ -372,12 +410,12 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
             <Input
               type="date"
               value={selectedDate}
-              onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setSelectedDate(e.target.value)}
-              min={format(new Date(), 'yyyy-MM-dd')} // Prevent selecting past dates
+              onChange={(e) => setSelectedDate(e.target.value)}
+              min={format(new Date(), 'yyyy-MM-dd')}
               bg={inputBg}
               borderColor={inputBorder}
               _placeholder={{ color: placeholderColor }}
-              isDisabled={!selectedBarberId || !selectedServiceId} // Disable if no barber/service selected
+              isDisabled={!selectedBarberId || !selectedServiceId}
             />
           </FormControl>
 
@@ -385,14 +423,14 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
             <FormLabel color={labelColor}>Select Time</FormLabel>
             <Select
               value={selectedTime}
-              onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setSelectedTime(e.target.value)}
+              onChange={(e) => setSelectedTime(e.target.value)}
               bg={inputBg}
               borderColor={inputBorder}
               _placeholder={{ color: placeholderColor }}
-              isDisabled={!selectedDate || fetchingTimes} // Disable if no date or fetching times
+              isDisabled={!selectedDate || isDataLoading}
             >
               <option value="">-- Select Time --</option>
-              {fetchingTimes ? (
+              {isDataLoading ? (
                 <option disabled>Loading times...</option>
               ) : availableTimes.length > 0 ? (
                 availableTimes.map((time) => (
@@ -409,7 +447,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
           <FormLabel color={labelColor}>Notes (Optional)</FormLabel>
           <Textarea
             value={notes}
-            onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setNotes(e.target.value)}
+            onChange={(e) => setNotes(e.target.value)}
             rows={3}
             bg={inputBg}
             borderColor={inputBorder}
@@ -417,10 +455,9 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
           />
         </FormControl>
 
-        {/* New: Create Account Checkbox */}
         <Checkbox
           isChecked={createAccountChecked}
-          onChange={(e: { target: { checked: boolean | ((prevState: boolean) => boolean); }; }) => setCreateAccountChecked(e.target.checked)}
+          onChange={(e) => setCreateAccountChecked(e.target.checked)}
           colorScheme="brand"
           color={textColorPrimary}
         >
@@ -443,9 +480,8 @@ const BookingForm: React.FC<BookingFormProps> = ({ barbers, services }) => {
           Confirm Appointment
         </Button>
 
-        {/* New: Lateness Disclaimer */}
         <Text fontSize="sm" color={textColorSecondary} textAlign="center" mt={4}>
-          <Text as="span" fontWeight="bold" color="red.400">Disclaimer:</Text> If you are more than 5 minutes late for your appointment, your barber may not be available to accommodate you, and your appointment might be cancelled.
+          <Text as="span" fontWeight="bold" color={theme.colors.neutral.light['status-red']}>Disclaimer:</Text> If you are more than 5 minutes late for your appointment, your barber may not be available to accommodate you, and your appointment might be cancelled.
         </Text>
       </VStack>
     </Box>

@@ -1,34 +1,35 @@
 // src/components/Navbar.tsx
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box, Flex, Heading, Button, Stack, useColorMode, useColorModeValue, IconButton, Menu, MenuButton, MenuList, MenuItem, Link as ChakraLink, Text, useTheme,
-  Spinner, // Import Spinner for loading indicator
-  Icon,    // Import Icon for general icon use
-  Image,   // Import Image component for the app icon
+  Spinner,
+  Icon,
+  Image,
 } from '@chakra-ui/react';
 import { HamburgerIcon, CloseIcon, MoonIcon, SunIcon } from '@chakra-ui/icons';
 import NextLink from 'next/link';
 import { useRouter } from 'next/navigation';
 import { usePageTransition } from './PageTransitionProvider';
-import { FiLogOut } from 'react-icons/fi'; // Import logout icon
+import { FiLogOut } from 'react-icons/fi';
+import { useAuth } from '@/context/AuthContext';
 
 interface NavbarProps {
   type: 'customer' | 'dashboard';
   appName?: string;
-  onDashboardLogout?: () => Promise<void>;
-  siteLogoUrl?: string; // NEW: Add siteLogoUrl prop
+  siteLogoUrl?: string;
 }
 
-export function Navbar({ type, appName = 'The Chair App', onDashboardLogout, siteLogoUrl }: NavbarProps) {
+export function Navbar({ type, appName = 'The Chair App', siteLogoUrl }: NavbarProps) {
   const { colorMode, toggleColorMode } = useColorMode();
   const theme = useTheme();
+
   const router = useRouter();
   const { startTransition } = usePageTransition();
+  const { isAuthenticated, logout, isAdmin } = useAuth();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [isLogoutLoading, setIsLogoutLoading] = useState(false);
 
   const toggleMenu = () => setIsOpen(!isOpen);
 
@@ -41,8 +42,8 @@ export function Navbar({ type, appName = 'The Chair App', onDashboardLogout, sit
   ];
 
   const dashboardLinks = [
-    { label: 'Today\'s Appointments', href: '/barber-dashboard' }, // New link for daily overview
-    { label: 'Manage Data', href: '/barber-dashboard/manage' }, // Link to the full management dashboard
+    { label: 'Today\'s Appointments', href: '/barber-dashboard' },
+    { label: 'Manage Data', href: '/barber-dashboard/manage' },
     { label: 'Reports', href: '/barber-dashboard/admin-reports' },
     { label: 'Messages', href: '/barber-dashboard/messages' },
   ];
@@ -54,7 +55,6 @@ export function Navbar({ type, appName = 'The Chair App', onDashboardLogout, sit
   const hoverBg = useColorModeValue(theme.colors.brand['100'], theme.colors.brand['700']);
   const borderColor = useColorModeValue(theme.colors.neutral.light['border-color'], theme.colors.neutral.dark['border-color']);
 
-  // Use the siteLogoUrl prop if provided, otherwise fallback to a placeholder
   const displayedIconUrl = siteLogoUrl || "https://placehold.co/40x40/326AA0/FFFFFF?text=App";
 
   return (
@@ -71,15 +71,14 @@ export function Navbar({ type, appName = 'The Chair App', onDashboardLogout, sit
     >
       <Flex h={16} alignItems={'center'} justifyContent={'space-between'}>
         <NextLink href="/" passHref>
-          {/* Wrapped Image and Heading in a Flex to keep them close */}
           <Flex alignItems="center" cursor="pointer">
             <Image
-              src={displayedIconUrl} // Use displayedIconUrl here
+              src={displayedIconUrl}
               alt={`${appName} Logo`}
-              boxSize="40px" // Set a fixed size for the icon
-              borderRadius="full" // Make it circular if desired
+              boxSize="40px"
+              borderRadius="full"
               objectFit="cover"
-              mr={2} // Add some margin to the right of the image
+              mr={2}
             />
             <Heading as="h1" size="md" color={textColor}>
               {appName}
@@ -107,22 +106,50 @@ export function Navbar({ type, appName = 'The Chair App', onDashboardLogout, sit
                 </ChakraLink>
               </NextLink>
             ))}
+            {isAdmin && (
+              <NextLink href="/admin" passHref>
+                <ChakraLink
+                  as={Button}
+                  variant="ghost"
+                  color={textColor}
+                  _hover={{ bg: hoverBg }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    startTransition();
+                    router.push('/admin');
+                  }}
+                >
+                  Admin Panel
+                </ChakraLink>
+              </NextLink>
+            )}
+
+            {/* Conditional Login/Logout Button: ONLY show on dashboard type pages */}
             {type === 'dashboard' && (
-              <Button
-                variant="ghost"
-                colorScheme="red"
-                isLoading={isLogoutLoading}
-                onClick={async () => {
-                  setIsLogoutLoading(true);
-                  if (onDashboardLogout) {
-                    await onDashboardLogout();
-                  }
-                  setIsLogoutLoading(false);
-                }}
-                _hover={{ bg: 'red.700' }}
-              >
-                Logout
-              </Button>
+              isAuthenticated ? (
+                <Button
+                  variant="ghost"
+                  colorScheme="red"
+                  onClick={logout}
+                  _hover={{ bg: 'red.700' }}
+                  leftIcon={<Icon as={FiLogOut} />}
+                >
+                  Logout
+                </Button>
+              ) : (
+                <NextLink href="/login" passHref>
+                  <Button
+                    colorScheme="brand"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      startTransition();
+                      router.push('/login');
+                    }}
+                  >
+                    Login
+                  </Button>
+                </NextLink>
+              )
             )}
             <IconButton
               aria-label="Toggle color mode"
@@ -172,23 +199,46 @@ export function Navbar({ type, appName = 'The Chair App', onDashboardLogout, sit
                   {link.label}
                 </MenuItem>
               ))}
-              {type === 'dashboard' && (
+              {isAdmin && (
                 <MenuItem
-                  isDisabled={isLogoutLoading}
-                  onClick={async () => {
-                    setIsLogoutLoading(true);
-                    if (onDashboardLogout) {
-                      await onDashboardLogout();
-                    }
-                    setIsLogoutLoading(false);
+                  _hover={{ bg: hoverBg }}
+                  color={textColor}
+                  onClick={() => {
+                    startTransition();
+                    router.push('/admin');
                     setIsOpen(false);
                   }}
-                  _hover={{ bg: 'red.700' }}
-                  color="red.400"
-                  icon={isLogoutLoading ? <Spinner size="sm" /> : <Icon as={FiLogOut} />}
                 >
-                  {isLogoutLoading ? 'Logging out...' : 'Logout'}
+                  Admin Panel
                 </MenuItem>
+              )}
+              {/* Conditional Login/Logout Button for Mobile Menu: ONLY show on dashboard type pages */}
+              {type === 'dashboard' && (
+                isAuthenticated ? (
+                  <MenuItem
+                    onClick={() => {
+                      logout();
+                      setIsOpen(false);
+                    }}
+                    _hover={{ bg: 'red.700' }}
+                    color="red.400"
+                    icon={<Icon as={FiLogOut} />}
+                  >
+                    Logout
+                  </MenuItem>
+                ) : (
+                  <MenuItem
+                    onClick={() => {
+                      startTransition();
+                      router.push('/login');
+                      setIsOpen(false);
+                    }}
+                    _hover={{ bg: hoverBg }}
+                    color={textColor}
+                  >
+                    Login
+                  </MenuItem>
+                )
               )}
             </MenuList>
           </Menu>

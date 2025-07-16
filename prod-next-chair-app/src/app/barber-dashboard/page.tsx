@@ -35,7 +35,8 @@ async function getDailyAppointmentsData(): Promise<{
   services: Service[];
   todayAppointments: Appointment[];
   upcomingAppointments: Appointment[];
-  contacts: Contact[]; // NEW: Add contacts to the return type
+  allAppointments: Appointment[]; // ADDED: New type for all appointments
+  contacts: Contact[];
 }> {
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Start of today
@@ -86,7 +87,16 @@ async function getDailyAppointmentsData(): Promise<{
         status,
         notes
       } | order(dateTime asc),
-      "contacts": *[_type == "contact"]{ // NEW: Fetch all contact messages
+      "allAppointments": *[_type == "appointment"]{ // ADDED: New query for ALL appointments
+        _id,
+        customer->{_id, name, email, phone},
+        barber->{_id, name},
+        service->{_id, name, duration, price},
+        dateTime,
+        status,
+        notes
+      } | order(dateTime desc), // You might want to order all appointments for display
+      "contacts": *[_type == "contact"]{
         _id,
         name,
         email,
@@ -96,7 +106,7 @@ async function getDailyAppointmentsData(): Promise<{
         sentAt,
         status,
         resolutionNotes
-      } | order(sentAt desc) // Order by most recent messages first
+      } | order(sentAt desc)
     }
   `;
 
@@ -116,12 +126,13 @@ async function getDailyAppointmentsData(): Promise<{
     services: data.services || [],
     todayAppointments: data.todayAppointments || [],
     upcomingAppointments: data.upcomingAppointments || [],
-    contacts: data.contacts || [], // NEW: Return contacts
+    allAppointments: data.allAppointments || [], // ADDED: Return all appointments
+    contacts: data.contacts || [],
   };
 }
 
 export default async function BarberDashboardAppointmentsPage() {
-  const { barbers, services, todayAppointments, upcomingAppointments, contacts } = await getDailyAppointmentsData(); // NEW: Destructure contacts
+  const { barbers, services, todayAppointments, upcomingAppointments, allAppointments, contacts } = await getDailyAppointmentsData(); // MODIFIED: Destructure allAppointments
 
   return (
     <BarberDailyAppointmentsClient
@@ -129,6 +140,7 @@ export default async function BarberDashboardAppointmentsPage() {
       services={services}
       todayAppointments={todayAppointments}
       upcomingAppointments={upcomingAppointments}
+      allAppointments={allAppointments} // ADDED: Pass allAppointments as a prop
     />
   );
 }

@@ -2,12 +2,15 @@
 'use client'; // Add this directive at the very top
 
 import Link from 'next/link';
-import { Box, Flex, Heading, Text, Button, useColorModeValue } from '@chakra-ui/react';
+import { Box, Flex, Heading, Text, Button, useColorModeValue, useTheme } from '@chakra-ui/react'; // Import useTheme
 
 export default function NotFound() {
-  const bgColor = useColorModeValue('gray.50', 'gray.800');
-  const textColor = useColorModeValue('gray.800', 'white');
-  const buttonScheme = 'brand';
+  const theme = useTheme(); // Initialize useTheme hook
+
+  // Use theme colors for background and text
+  const bgColor = useColorModeValue(theme.colors.neutral.light['bg-primary'], theme.colors.neutral.dark['bg-primary']);
+  const textColor = useColorModeValue(theme.colors.neutral.light['text-primary'], theme.colors.neutral.dark['text-primary']);
+  const buttonScheme = 'brand'; // This will automatically use your brand colors defined in theme.ts
 
   return (
     <Flex

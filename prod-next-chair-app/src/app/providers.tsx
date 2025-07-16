@@ -5,6 +5,7 @@ import { ChakraProvider } from '@chakra-ui/react'
 import dynamic from 'next/dynamic'
 import themes from './theme/theme' // Import your custom theme
 import { PageTransitionProvider } from '@/components/PageTransitionProvider' // Import PageTransitionProvider
+import { AuthProvider } from '@/context/AuthContext'; // <--- NEW: Import AuthProvider
 
 // Dynamically import ThemeProvider from next-themes with ssr: false
 const ThemeProvider = dynamic(
@@ -25,9 +26,10 @@ export function Providers({ children }: ProvidersProps) {
         enableSystem={false}
         disableTransitionOnChange
       >
-        {/* Ensure children are wrapped with PageTransitionProvider for page transitions */}
         <PageTransitionProvider>
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </PageTransitionProvider>
       </ThemeProvider>
     </ChakraProvider>

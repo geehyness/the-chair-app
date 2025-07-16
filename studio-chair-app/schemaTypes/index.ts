@@ -10,6 +10,7 @@ import siteSettings from './siteSettings'
 import blogPost from './blogPost'
 import logEntry from './logEntry'
 import contact from './contact' // Import the new contact schema
+import user from './user'
 
 export const schemaTypes = [
   service,
@@ -22,5 +23,6 @@ export const schemaTypes = [
   siteSettings,
   blogPost,
   logEntry,
-  contact, // Add contact to the schemaTypes array
+  contact,
+  user,
 ]
